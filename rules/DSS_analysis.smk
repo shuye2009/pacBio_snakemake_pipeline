@@ -13,7 +13,6 @@
 import os
 
 SCRIPTS_DIR = os.path.join(workflow.basedir, "scripts")
-DSS_DIR     = config["directory"]["output"] + "/dss"
 
 
 # =============================================================================
@@ -29,10 +28,10 @@ rule DSS_analysis:
             sample=ALL_SAMPLES
         ),
     output:
-        dml_tsv=DSS_DIR + "/dml_results.tsv",
-        dml_bed=DSS_DIR + "/dml_results.bed",
-        dmr_tsv=DSS_DIR + "/dmr_results.tsv",
-        dmr_bed=DSS_DIR + "/dmr_results.bed",
+        dml_tsv=DSS_BASE + "/dml_results.tsv",
+        dml_bed=DSS_BASE + "/dml_results.bed",
+        dmr_tsv=DSS_BASE + "/dmr_results.tsv",
+        dmr_bed=DSS_BASE + "/dmr_results.bed",
     params:
         script=os.path.join(SCRIPTS_DIR, "run_dss_analysis.R"),
         beds=",".join(

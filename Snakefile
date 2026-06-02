@@ -19,6 +19,7 @@ FUNC_BASE = config["directory"]["output"] + "/functional_analysis"
 METHBAT_DIR = METHBAT_BASE + "/" + TARGET
 VIS_DIR = VIS_BASE + "/" + TARGET
 FUNC_DIR = FUNC_BASE + "/" + TARGET
+DSS_BASE = config["directory"]["output"] + "/dss"
 
 include: "rules/pbmm2.smk"
 if PHASING_ENABLED:
@@ -59,10 +60,10 @@ def get_all_outputs():
         FUNC_BASE + "/dmr_motif_enrichment.png",
         FUNC_BASE + "/dmr_motif_enrichment.pdf",
         FUNC_BASE + "/dmr_motif_enrichment.html",
-        config["directory"]["output"] + "/dss/dml_results.tsv",
-        config["directory"]["output"] + "/dss/dml_results.bed",
-        config["directory"]["output"] + "/dss/dmr_results.tsv",
-        config["directory"]["output"] + "/dss/dmr_results.bed",
+        DSS_BASE + "/dml_results.tsv",
+        DSS_BASE + "/dml_results.bed",
+        DSS_BASE + "/dmr_results.tsv",
+        DSS_BASE + "/dmr_results.bed",
     ]
     if PHASING_ENABLED:
         outputs.extend([
