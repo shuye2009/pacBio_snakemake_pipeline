@@ -28,6 +28,7 @@ include: "rules/methbat.smk"
 include: "rules/visualization.smk"
 include: "rules/bio_insights.smk"
 include: "rules/global_stats.smk"
+include: "rules/DSS_analysis.smk"
 
 def get_all_outputs():
     """Return all final outputs, including haplotype-specific when phasing is enabled."""
@@ -58,6 +59,10 @@ def get_all_outputs():
         FUNC_BASE + "/dmr_motif_enrichment.png",
         FUNC_BASE + "/dmr_motif_enrichment.pdf",
         FUNC_BASE + "/dmr_motif_enrichment.html",
+        config["directory"]["output"] + "/dss/dml_results.tsv",
+        config["directory"]["output"] + "/dss/dml_results.bed",
+        config["directory"]["output"] + "/dss/dmr_results.tsv",
+        config["directory"]["output"] + "/dss/dmr_results.bed",
     ]
     if PHASING_ENABLED:
         outputs.extend([

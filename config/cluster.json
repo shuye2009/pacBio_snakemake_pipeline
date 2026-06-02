@@ -374,6 +374,14 @@
         "time" : "12:00:00",
         "memory" : "30G",
         "ntasks-per-node" : 8
+    },
+
+    "DSS_analysis" :
+    {
+        "partition" : "himem",
+        "time" : "24:00:00",
+        "memory" : "128G",
+        "ntasks-per-node" : 8
     }
 
 }

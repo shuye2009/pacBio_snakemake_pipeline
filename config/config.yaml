@@ -53,3 +53,14 @@ methbat:
   pvalue_cutoff: 0.05
   min_jaccard: 0.5  # Minimum Jaccard index for ASM region overlap
   regions: "/cluster/projects/hardinggroup/Shuye/resource/ENCFF912FUA_MCF10A_element_gene_links_thresholded_Engreitz_T2T_6col.bed"
+
+dss:
+  threads: 8
+  delta: 0.1          # Minimum methylation difference for DML/DMR
+  pvalue: 1e-5        # P-value threshold for calling DMLs/DMRs
+  fdr: 0.05           # FDR cutoff (reserved)
+  min_cpg: 3          # Minimum CpG sites per DMR
+  min_length: 50      # Minimum DMR length in bp
+  merge_dist: 100     # Max distance to merge adjacent DMRs
+  smoothing: true     # Enable spatial smoothing in DMLtest
+  smoothing_span: 500 # Smoothing window size in bp
