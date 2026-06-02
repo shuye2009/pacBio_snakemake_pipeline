@@ -1,0 +1,379 @@
+{
+    "__default__" :
+    {
+        "account" : "hakemgroup",
+        "partition" : "all",
+        "job-name": "smk_{rule}_{wildcards}",
+        "time" : "5:00:00",
+        "nodes" : 1,
+        "memory" : "30G",
+        "ntasks-per-node" : 1,
+        "gres" : "",
+        "chdir" : "slurm_out",
+        "output" : "{rule}.{wildcards}.out",
+        "error" : "{rule}.{wildcards}.err"
+    },
+
+    "Pbmm2_align" :
+    {
+        "partition" : "himem",
+        "time" : "12:00:00",
+        "memory" : "64G",
+        "ntasks-per-node" : 8
+    },
+
+    "DeepVariant" :
+    {
+        "account" : "hakemgroup_gpu",
+        "partition" : "gpu_short",
+        "time" : "12:00:00",
+        "memory" : "64G",
+        "ntasks-per-node" : 8,
+        "gres" : "gpu:1"
+    },
+
+    "HiPhase" :
+    {
+        "partition" : "himem",
+        "time" : "12:00:00",
+        "memory" : "64G",
+        "ntasks-per-node" : 8
+    },
+
+    "Index_haplotagged_bam" :
+    {
+        "partition" : "all",
+        "time" : "2:00:00",
+        "memory" : "16G",
+        "ntasks-per-node" : 1
+    },
+
+    "Aligned_bam_to_cpg_scores" :
+    {
+        "partition" : "himem",
+        "time" : "12:00:00",
+        "memory" : "64G",
+        "ntasks-per-node" : 8
+    },
+
+    "Methbat_region_profile" :
+    {
+        "partition" : "all",
+        "time" : "12:00:00",
+        "memory" : "30G",
+        "ntasks-per-node" : 1
+    },
+
+    "Methbat_region_build" :
+    {
+        "partition" : "himem",
+        "time" : "12:00:00",
+        "memory" : "64G",
+        "ntasks-per-node" : 1
+    },
+
+    "Methbat_region_compare" :
+    {
+        "partition" : "all",
+        "time" : "12:00:00",
+        "memory" : "30G",
+        "ntasks-per-node" : 1
+    },
+
+    "Methbat_signature" :
+    {
+        "partition" : "veryhimem",
+        "time" : "1-0:00:00",
+        "memory" : "150G",
+        "ntasks-per-node" : 16
+    },
+
+    "Plot_methylation_heatmap" :
+    {
+        "partition" : "all",
+        "time" : "1:00:00",
+        "memory" : "30G",
+        "ntasks-per-node" : 1
+    },
+
+    "Plot_dmr_volcano" :
+    {
+        "partition" : "all",
+        "time" : "0:30:00",
+        "memory" : "8G",
+        "ntasks-per-node" : 1
+    },
+
+    "Plot_sample_pca_region" :
+    {
+        "partition" : "all",
+        "time" : "1:00:00",
+        "memory" : "16G",
+        "ntasks-per-node" : 1
+    },
+
+    "Plot_methylation_distribution_region" :
+    {
+        "partition" : "all",
+        "time" : "2:00:00",
+        "memory" : "30G",
+        "ntasks-per-node" : 1
+    },
+
+    "Generate_report" :
+    {
+        "partition" : "all",
+        "time" : "0:30:00",
+        "memory" : "16G",
+        "ntasks-per-node" : 1
+    },
+
+    "Plot_significant_dmr_heatmap" :
+    {
+        "partition" : "all",
+        "time" : "1:00:00",
+        "memory" : "30G",
+        "ntasks-per-node" : 1
+    },
+
+    "Methbat_region_profile_haplotype" :
+    {
+        "partition" : "all",
+        "time" : "12:00:00",
+        "memory" : "30G",
+        "ntasks-per-node" : 1
+    },
+
+    "Create_haplotype_collection" :
+    {
+        "partition" : "all",
+        "time" : "0:30:00",
+        "memory" : "4G",
+        "ntasks-per-node" : 1
+    },
+
+    "Methbat_signature_haplotype" :
+    {
+        "partition" : "veryhimem",
+        "time" : "1-0:00:00",
+        "memory" : "150G",
+        "ntasks-per-node" : 16
+    },
+
+    "Create_region_profile_collection_haplotype" :
+    {
+        "partition" : "all",
+        "time" : "0:30:00",
+        "memory" : "4G",
+        "ntasks-per-node" : 1
+    },
+
+    "Methbat_region_build_haplotype" :
+    {
+        "partition" : "himem",
+        "time" : "12:00:00",
+        "memory" : "64G",
+        "ntasks-per-node" : 1
+    },
+
+    "Methbat_region_compare_haplotype" :
+    {
+        "partition" : "all",
+        "time" : "12:00:00",
+        "memory" : "30G",
+        "ntasks-per-node" : 1
+    },
+
+    "IGV_reports_regions" :
+    {
+        "partition" : "himem",
+        "time" : "6:00:00",
+        "memory" : "64G",
+        "ntasks-per-node" : 1
+    },
+
+    "IGV_reports_dmrs" :
+    {
+        "partition" : "himem",
+        "time" : "6:00:00",
+        "memory" : "64G",
+        "ntasks-per-node" : 1
+    },
+
+    "Index_gtf" :
+    {
+        "partition" : "all",
+        "time" : "1:00:00",
+        "memory" : "16G",
+        "ntasks-per-node" : 1
+    },
+
+    "Methbat_joint_segment_ASM" :
+    {
+        "partition" : "himem",
+        "time" : "24:00:00",
+        "memory" : "64G",
+        "ntasks-per-node" : 8
+    },
+
+    "Methbat_profile_ASM" :
+    {
+        "partition" : "all",
+        "time" : "2:00:00",
+        "memory" : "16G",
+        "ntasks-per-node" : 1
+    },
+
+    "Methbat_build_ASM" :
+    {
+        "partition" : "all",
+        "time" : "1:00:00",
+        "memory" : "16G",
+        "ntasks-per-node" : 1
+    },
+
+    "ASM_haplotype_comparison" :
+    {
+        "partition" : "all",
+        "time" : "1:00:00",
+        "memory" : "16G",
+        "ntasks-per-node" : 1
+    },
+
+    "Methbat_compare_ASM_groups" :
+    {
+        "partition" : "all",
+        "time" : "1:00:00",
+        "memory" : "16G",
+        "ntasks-per-node" : 1
+    },
+
+    "Extract_significant_ASM" :
+    {
+        "partition" : "all",
+        "time" : "0:30:00",
+        "memory" : "8G",
+        "ntasks-per-node" : 1
+    },
+
+    "IGV_reports_ASM" :
+    {
+        "partition" : "himem",
+        "time" : "6:00:00",
+        "memory" : "64G",
+        "ntasks-per-node" : 1
+    },
+
+    "Extract_differential_ASM" :
+    {
+        "partition" : "all",
+        "time" : "0:30:00",
+        "memory" : "8G",
+        "ntasks-per-node" : 1
+    },
+
+    "IGV_reports_differential_ASM" :
+    {
+        "partition" : "himem",
+        "time" : "6:00:00",
+        "memory" : "64G",
+        "ntasks-per-node" : 1
+    },
+
+    "Convert_region_bed_to_tsv" :
+    {
+        "partition" : "all",
+        "time" : "0:30:00",
+        "memory" : "4G",
+        "ntasks-per-node" : 1
+    },
+
+    "Create_region_profile_collection" :
+    {
+        "partition" : "all",
+        "time" : "0:30:00",
+        "memory" : "4G",
+        "ntasks-per-node" : 1
+    },
+
+    "Create_collection" :
+    {
+        "partition" : "all",
+        "time" : "0:30:00",
+        "memory" : "4G",
+        "ntasks-per-node" : 1
+    },
+
+    "Symlink_haplotype_beds" :
+    {
+        "partition" : "all",
+        "time" : "0:15:00",
+        "memory" : "4G",
+        "ntasks-per-node" : 1
+    },
+
+    "Global_methylation_per_sample" :
+    {
+        "partition" : "all",
+        "time" : "2:00:00",
+        "memory" : "16G",
+        "ntasks-per-node" : 1
+    },
+
+    "Global_density_per_sample" :
+    {
+        "partition" : "all",
+        "time" : "1:00:00",
+        "memory" : "8G",
+        "ntasks-per-node" : 1
+    },
+
+    "Global_density_per_chromosome" :
+    {
+        "partition" : "all",
+        "time" : "1:00:00",
+        "memory" : "8G",
+        "ntasks-per-node" : 1
+    },
+
+    "Global_density_composite" :
+    {
+        "partition" : "all",
+        "time" : "2:00:00",
+        "memory" : "16G",
+        "ntasks-per-node" : 1
+    },
+
+    "Merge_global_methylation" :
+    {
+        "partition" : "all",
+        "time" : "2:00:00",
+        "memory" : "30G",
+        "ntasks-per-node" : 1
+    },
+
+    "Compute_bin_annotation" :
+    {
+        "partition" : "all",
+        "time" : "4:00:00",
+        "memory" : "30G",
+        "ntasks-per-node" : 1
+    },
+
+    "Annotate_dmrs" :
+    {
+        "partition" : "all",
+        "time" : "4:00:00",
+        "memory" : "30G",
+        "ntasks-per-node" : 1
+    },
+
+    "Motif_enrichment" :
+    {
+        "partition" : "all",
+        "time" : "12:00:00",
+        "memory" : "30G",
+        "ntasks-per-node" : 8
+    }
+
+}

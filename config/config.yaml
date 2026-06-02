@@ -1,0 +1,55 @@
+directory:
+  input: "/cluster/projects/hardinggroup/Shuye/pacbio/bam"
+  output: "/cluster/projects/hardinggroup/Shuye/pacbio/output"
+
+genome:
+  fasta: "/cluster/projects/hardinggroup/Shuye/reference_genome/human/T2T_CHM13/bwameth_index/chm13v2.0_maskedMY_lambda_pUC19c.fa"
+  gtf: "/cluster/projects/hardinggroup/Shuye/reference_genome/human/T2T_CHM13/Homo_sapiens-GCA_009914755.4-2022_07-genes_repeat_censat.gtf"
+  gff3: "/cluster/projects/hardinggroup/Shuye/reference_genome/human/T2T_CHM13/Homo_sapiens-GCA_009914755.4-2022_07-genes.gff3"
+  cgi: "/cluster/projects/hardinggroup/Shuye/resource/chm13v2.0_CGI.bed"
+  centromere: "/cluster/projects/hardinggroup/Shuye/resource/chm13v2.0_censat_v2.1_simplified.bed"
+  enhancer: "/cluster/projects/hardinggroup/Shuye/resource/ENCFF912FUA_MCF10A_element_gene_links_thresholded_Engreitz_T2T_6col.bed"
+  eglink: "/cluster/projects/hardinggroup/Shuye/resource/ENCFF912FUA_MCF10A_element_gene_links_thresholded_Engreitz_T2T.bed"
+  repeat: "/cluster/projects/hardinggroup/Shuye/resource/chm13v2.0_RepeatMasker_4.1.2p1.2022Apr14_dup_6col.bed"
+  repeat_info: "/cluster/projects/hardinggroup/Shuye/resource/chm13v2.0_RepeatMasker_4.1.2p1.2022Apr14_dup.bed"
+  jaspar_db: "/cluster/home/t128737uhn/.cache/R/BiocFileCache/1e2926a17d297_JASPAR2024.sqlite"
+
+target: "enhancer"
+
+global:
+  bin_size: 500000  # Bin size in bp for global methylation analysis
+
+samples:
+  case:
+    - m64011_190830_220126.hifi_reads
+    - m64011_190901_095311.hifi_reads
+  control:
+    - m64012_190920_173625.hifi_reads
+    - m64012_190921_234837.hifi_reads
+
+phasing:
+  enabled: true  # Set to true to enable variant calling and haplotype phasing
+
+pbmm2:
+  threads: 8
+  preset: "HIFI"
+
+deepvariant:
+  threads: 16
+  model_type: "PACBIO"
+  singularity_image: "/cluster/projects/hardinggroup/Shuye/singularity/deepvariant_1.10.0-gpu.sif"
+
+hiphase:
+  threads: 8
+
+pb_cpg_tools:
+  threads: 8
+
+methbat:
+  threads: 16
+  min_delta: 0.2
+  min_zscore: 2.0
+  min_sample_frac: 0.8
+  pvalue_cutoff: 0.05
+  min_jaccard: 0.5  # Minimum Jaccard index for ASM region overlap
+  regions: "/cluster/projects/hardinggroup/Shuye/resource/ENCFF912FUA_MCF10A_element_gene_links_thresholded_Engreitz_T2T_6col.bed"
