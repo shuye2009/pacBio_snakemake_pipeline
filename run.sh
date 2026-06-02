@@ -21,4 +21,4 @@ case $1 in
 esac
 
 export TARGET
-sbatch --export=TARGET run_pacbio.sh
+sbatch --export=ALL,TARGET run_pacbio.sh

@@ -144,7 +144,7 @@ def main():
             print(f"Fitted z-score distribution: μ={mu:.4f}, σ={std:.4f}")
         
         # Compute p-values using fitted normal distribution parameters
-        pvalues = 2 * scipy_stats.norm.sf(zscores, loc=mu, scale=std)  # two-tailed p-value
+        pvalues = 2 * scipy_stats.norm.sf(abs(zscores), loc=0, scale=std)  # two-tailed p-value
         
         # Handle edge cases (very small p-values)
         pvalues = np.clip(pvalues, 1e-300, 1.0)

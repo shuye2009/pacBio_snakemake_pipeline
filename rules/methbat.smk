@@ -717,10 +717,6 @@ if config.get("phasing", {}).get("enabled", False):
                 sig_asm = all_df[all_df['avg_abs_meth_deltas'] >= params.min_delta].copy()
                 print(f"Found {len(sig_asm)} regions with avg_abs_meth_deltas >= {params.min_delta}")
                 
-                # Also filter for regions labeled as AlleleSpecificMethylation
-                asm_labeled = sig_asm[sig_asm['AlleleSpecificMethylation'] > 0]
-                print(f"Of these, {len(asm_labeled)} have AlleleSpecificMethylation > 0")
-                
                 sig_asm.to_csv(output.comparison, sep='\t', index=False)
             else:
                 print("Warning: avg_abs_meth_deltas column not found")

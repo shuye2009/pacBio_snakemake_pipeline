@@ -165,7 +165,7 @@ def main():
                 print(f"Fitted z-score distribution: μ={mu:.4f}, σ={std:.4f}") 
             
             # Compute p-values using fitted normal distribution parameters
-            valid_pvalues = 2 * scipy_stats.norm.sf(valid_zscores, loc=mu, scale=std)
+            valid_pvalues = 2 * scipy_stats.norm.sf(abs(valid_zscores), loc=0, scale=std)
             # Handle edge cases
             valid_pvalues = np.clip(valid_pvalues, 1e-300, 1.0)
             pvalues[valid_mask] = valid_pvalues

@@ -53,7 +53,7 @@ def compute_jaccard(case_start, case_end, ctrl_start, ctrl_end, overlap):
     if overlap <= 0 or ctrl_start is None:
         return 0.0
     
-    union = max(case_end, ctrl_end) - min(case_start, ctrl_start)
+    union = (case_end - case_start) + (ctrl_end - ctrl_start) - overlap
     return overlap / union if union > 0 else 0.0
 
 

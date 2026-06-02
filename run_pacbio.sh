@@ -13,7 +13,8 @@
 PIPELINE_DIR="/cluster/home/t128737uhn/snakemake_pipelines/pacBio_snakemake_pipeline"
 
 # Target region type for methbat (e.g., enhancer, cgi, centromere, repeat)
-# Override via: sbatch run_pacbio.sh --config target=cgi
+# TARGET is set as an environment variable in run.sh (e.g., ./run.sh cgi)
+# Default: enhancer
 TARGET="${TARGET:-enhancer}"
 
 # Change to pipeline directory
@@ -55,7 +56,6 @@ snakemake \
     --latency-wait 60 \
     --rerun-incomplete \
     --keep-going \
-    --printshellcmds \
-    "$@"
+    --printshellcmds
 
 module unload snakemake/7.3.8
