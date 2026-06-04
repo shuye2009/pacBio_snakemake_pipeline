@@ -49,6 +49,8 @@ build_bsseq <- function(merged, sample_names) {
   X_mat <- as.matrix(merged[, ..X_cols])
   storage.mode(N_mat) <- "integer"
   storage.mode(X_mat) <- "integer"
+  colnames(N_mat) <- sample_names
+  colnames(X_mat) <- sample_names
   BSseq(M = X_mat, Cov = N_mat, chr = merged$chr, pos = merged$pos,
         sampleNames = sample_names)
 }
@@ -103,7 +105,7 @@ main <- function() {
     group1 = samples[groups == "case"],
     group2 = samples[groups == "control"],
     smoothing = args$smoothing,
-    smoothing_span = args$smoothing_span,
+    smoothing.span = args$smoothing_span,
     ncores = args$threads
   )
 

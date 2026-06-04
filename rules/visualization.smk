@@ -289,6 +289,98 @@ rule IGV_reports_dmrs:
 
 
 # =============================================================================
+# IGV_reports_dss_dmrs: Generate IGV report for DSS DMR results
+#
+# Creates interactive HTML report showing differentially methylated regions
+# called by DSS (Dispersion Shrinkage for Sequencing).
+# =============================================================================
+rule IGV_reports_dss_dmrs:
+    input:
+        tsv=DSS_BASE + "/dmr_results.tsv",
+        bed=DSS_BASE + "/dmr_results.bed",
+        fasta=config["genome"]["fasta"],
+        gtf=config["directory"]["output"] + "/visualization/genes.sorted.gtf.gz",
+        gtf_index=config["directory"]["output"] + "/visualization/genes.sorted.gtf.gz.tbi",
+        bams=expand(config["directory"]["output"] + "/phased/{sample}.haplotagged.bam", sample=ALL_SAMPLES),
+        bais=expand(config["directory"]["output"] + "/phased/{sample}.haplotagged.bam.bai", sample=ALL_SAMPLES),
+    output:
+        report=VIS_BASE + "/igv_dss_dmrs.html",
+        track_config=VIS_BASE + "/igv_dss_dmrs_track_config.json",
+    params:
+        bam_args=lambda wildcards, input: " ".join(input.bams),
+        script=os.path.join(SCRIPTS_DIR, "generate_igv_track_config.py"),
+    log:
+        config["directory"]["output"] + "/logs/visualization/igv_dss_dmrs.log",
+    shell:
+        """
+        mkdir -p $(dirname {output.report})
+        mkdir -p $(dirname {log})
+
+        # Generate track config for BAM files with haplotype grouping and methylation coloring
+        /cluster/home/t128737uhn/miniconda3/bin/python {params.script} \
+            --bams {params.bam_args} \
+            --output {output.track_config}
+
+        module load igv-reports
+
+        create_report {input.tsv} \
+            --fasta {input.fasta} \
+            --sequence 1 --begin 2 --end 3 \
+            --info-columns areaStat diff.Methy nCG length \
+            --tracks {input.bed} {input.gtf} \
+            --track-config {output.track_config} \
+            --output {output.report} \
+            2>&1 | tee {log}
+        """
+
+
+# =============================================================================
+# IGV_reports_dss_dmls: Generate IGV report for DSS DML results
+#
+# Creates interactive HTML report showing differentially methylated loci
+# (single CpG sites) called by DSS.
+# =============================================================================
+rule IGV_reports_dss_dmls:
+    input:
+        tsv=DSS_BASE + "/dml_results.tsv",
+        bed=DSS_BASE + "/dml_results.bed",
+        fasta=config["genome"]["fasta"],
+        gtf=config["directory"]["output"] + "/visualization/genes.sorted.gtf.gz",
+        gtf_index=config["directory"]["output"] + "/visualization/genes.sorted.gtf.gz.tbi",
+        bams=expand(config["directory"]["output"] + "/phased/{sample}.haplotagged.bam", sample=ALL_SAMPLES),
+        bais=expand(config["directory"]["output"] + "/phased/{sample}.haplotagged.bam.bai", sample=ALL_SAMPLES),
+    output:
+        report=VIS_BASE + "/igv_dss_dmls.html",
+        track_config=VIS_BASE + "/igv_dss_dmls_track_config.json",
+    params:
+        bam_args=lambda wildcards, input: " ".join(input.bams),
+        script=os.path.join(SCRIPTS_DIR, "generate_igv_track_config.py"),
+    log:
+        config["directory"]["output"] + "/logs/visualization/igv_dss_dmls.log",
+    shell:
+        """
+        mkdir -p $(dirname {output.report})
+        mkdir -p $(dirname {log})
+
+        # Generate track config for BAM files with haplotype grouping and methylation coloring
+        /cluster/home/t128737uhn/miniconda3/bin/python {params.script} \
+            --bams {params.bam_args} \
+            --output {output.track_config}
+
+        module load igv-reports
+
+        create_report {input.tsv} \
+            --fasta {input.fasta} \
+            --sequence 1 --begin 2 --end 2 \
+            --info-columns mu1 mu2 diff pval fdr \
+            --tracks {input.bed} {input.gtf} \
+            --track-config {output.track_config} \
+            --output {output.report} \
+            2>&1 | tee {log}
+        """
+
+
+# =============================================================================
 # ASM Visualization Rules (when phasing is enabled)
 # =============================================================================
 if PHASING_ENABLED:

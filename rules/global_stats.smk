@@ -6,6 +6,8 @@ import os
 
 ALL_SAMPLES = config["samples"]["case"] + config["samples"]["control"]
 GLOBAL_DIR = config["directory"]["output"] + "/global"
+DSS_BASE = config["directory"]["output"] + "/dss"
+VIS_BASE = config["directory"]["output"] + "/visualizations"
 
 
 # =============================================================================
@@ -191,6 +193,8 @@ rule Compute_bin_annotation:
         enhancers=config["genome"]["enhancer"],
         cgi=config["genome"]["cgi"],
         dmrs=VIS_BASE + "/significant_dmrs.bed",
+        dml=DSS_BASE + "/dml_results.bed",
+        dmr=DSS_BASE + "/dmr_results.bed",
     output:
         tsv=GLOBAL_DIR + "/bin_annotation.tsv",
     params:
@@ -212,6 +216,8 @@ rule Compute_bin_annotation:
             --enhancers {input.enhancers} \
             --cgi {input.cgi} \
             --dmrs {input.dmrs} \
+            --dml {input.dml} \
+            --dmr {input.dmr} \
             --output-tsv {output.tsv} \
             2>&1 | tee {log}
         """

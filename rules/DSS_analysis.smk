@@ -35,8 +35,8 @@ rule DSS_analysis:
     params:
         script=os.path.join(SCRIPTS_DIR, "run_dss_analysis.R"),
         beds=",".join(
-            config["directory"]["output"] + "/pb_cpg_tools/{sample}.combined.bed.gz"
-            for sample in ALL_SAMPLES
+            config["directory"]["output"] + "/pb_cpg_tools/" + s + ".combined.bed.gz"
+            for s in ALL_SAMPLES
         ),
         samples=",".join(ALL_SAMPLES),
         groups=",".join(

@@ -378,7 +378,7 @@
 
     "DSS_analysis" :
     {
-        "partition" : "himem",
+        "partition" : "veryhimem",
         "time" : "24:00:00",
         "memory" : "128G",
         "ntasks-per-node" : 8

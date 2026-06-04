@@ -44,6 +44,8 @@ def get_all_outputs():
         VIS_DIR + "/methylation_report.html",
         VIS_DIR + "/igv_significant_regions.html",
         VIS_BASE + "/igv_significant_dmrs.html",
+        VIS_BASE + "/igv_dss_dmrs.html",
+        VIS_BASE + "/igv_dss_dmls.html",
         FUNC_BASE + "/dmr_annotations.tsv",
         FUNC_BASE + "/dmr_annotation_distribution.png",
         FUNC_BASE + "/dmr_annotation_distribution.pdf",

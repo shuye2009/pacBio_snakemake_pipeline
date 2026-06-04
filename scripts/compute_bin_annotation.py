@@ -51,6 +51,8 @@ def main():
     parser.add_argument("--enhancers", required=False, help="BED file for enhancers")
     parser.add_argument("--cgi", required=False, help="BED file for CpG islands")
     parser.add_argument("--dmrs", required=False, help="BED file for significant DMRs")
+    parser.add_argument("--dml", required=False, help="BED file for DSS DML results")
+    parser.add_argument("--dmr", required=False, help="BED file for DSS DMR results")
     parser.add_argument("--output-tsv", required=True, help="Output TSV path")
     args = parser.parse_args()
 
@@ -95,6 +97,18 @@ def main():
     if args.dmrs:
         df = load_bed(args.dmrs)
         annotations["dmr_count"] = {
+            c: (g["start"].values, g["end"].values)
+            for c, g in df.groupby("chrom")
+        }
+    if args.dml:
+        df = load_bed(args.dml)
+        annotations["dml_count"] = {
+            c: (g["start"].values, g["end"].values)
+            for c, g in df.groupby("chrom")
+        }
+    if args.dmr:
+        df = load_bed(args.dmr)
+        annotations["dss_dmr_count"] = {
             c: (g["start"].values, g["end"].values)
             for c, g in df.groupby("chrom")
         }
