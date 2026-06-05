@@ -335,15 +335,46 @@ rule IGV_reports_dss_dmrs:
 
 
 # =============================================================================
+# Filter_dml_for_igv: Extract top N most significant DMLs for IGV reporting
+#
+# Full DML results can contain hundreds of thousands of loci, which
+# overwhelms igv-reports. This filters to the top 5000 by p-value.
+# =============================================================================
+rule Filter_dml_for_igv:
+    input:
+        tsv=DSS_BASE + "/dml_results.tsv",
+    output:
+        tsv=DSS_BASE + "/dml_results.top500.tsv",
+        bed=DSS_BASE + "/dml_results.top500.bed",
+    params:
+        script=os.path.join(SCRIPTS_DIR, "filter_dml_for_igv.py"),
+        top_n=500,
+    log:
+        config["directory"]["output"] + "/logs/visualization/filter_dml_for_igv.log",
+    shell:
+        """
+        mkdir -p $(dirname {output.tsv})
+        mkdir -p $(dirname {log})
+
+        /cluster/home/t128737uhn/miniconda3/bin/python {params.script} \
+            --dml-tsv {input.tsv} \
+            --top-n {params.top_n} \
+            --output-tsv {output.tsv} \
+            --output-bed {output.bed} \
+            2>&1 | tee {log}
+        """
+
+
+# =============================================================================
 # IGV_reports_dss_dmls: Generate IGV report for DSS DML results
 #
-# Creates interactive HTML report showing differentially methylated loci
-# (single CpG sites) called by DSS.
+# Creates interactive HTML report showing the top differentially methylated
+# loci (single CpG sites) called by DSS.
 # =============================================================================
 rule IGV_reports_dss_dmls:
     input:
-        tsv=DSS_BASE + "/dml_results.tsv",
-        bed=DSS_BASE + "/dml_results.bed",
+        tsv=DSS_BASE + "/dml_results.top500.tsv",
+        bed=DSS_BASE + "/dml_results.top500.bed",
         fasta=config["genome"]["fasta"],
         gtf=config["directory"]["output"] + "/visualization/genes.sorted.gtf.gz",
         gtf_index=config["directory"]["output"] + "/visualization/genes.sorted.gtf.gz.tbi",

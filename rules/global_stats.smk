@@ -7,7 +7,6 @@ import os
 ALL_SAMPLES = config["samples"]["case"] + config["samples"]["control"]
 GLOBAL_DIR = config["directory"]["output"] + "/global"
 DSS_BASE = config["directory"]["output"] + "/dss"
-VIS_BASE = config["directory"]["output"] + "/visualizations"
 
 
 # =============================================================================

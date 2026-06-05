@@ -382,6 +382,30 @@
         "time" : "24:00:00",
         "memory" : "128G",
         "ntasks-per-node" : 8
+    },
+
+    "Convert_dss_dmr_tsv" :
+    {
+        "partition" : "all",
+        "time" : "0:30:00",
+        "memory" : "8G",
+        "ntasks-per-node" : 1
+    },
+
+    "Annotate_dss_dmrs" :
+    {
+        "partition" : "all",
+        "time" : "4:00:00",
+        "memory" : "30G",
+        "ntasks-per-node" : 1
+    },
+
+    "Motif_enrichment_dss_dmrs" :
+    {
+        "partition" : "all",
+        "time" : "12:00:00",
+        "memory" : "30G",
+        "ntasks-per-node" : 8
     }
 
 }
