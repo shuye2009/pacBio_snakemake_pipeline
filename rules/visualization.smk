@@ -579,7 +579,7 @@ rule Generate_report:
         dmr_heatmap=VIS_BASE + "/significant_dmr_heatmap.png",
         volcano=VIS_BASE + "/dmr_volcano.png",
         pca=VIS_DIR + "/region_sample_pca.png",
-        dist=VIS_DIR + "/methylation_distribution.png",
+        dist=config["directory"]["output"] + "/global/methylation_distribution.png",
         signature_stats=METHBAT_BASE + "/signature.signature_stats.tsv",
         dmr_stats=VIS_BASE + "/dmr_stats_with_pvalues.tsv",
         region_stats=VIS_DIR + "/region_cohort_comparison_with_pvalues.tsv",

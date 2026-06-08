@@ -21,11 +21,9 @@ global:
 
 samples:
   case:
-    - m64011_190830_220126.hifi_reads
-    - m64011_190901_095311.hifi_reads
+    - m84090_250709_022231_s1.hifi_reads.bc2009
   control:
-    - m64012_190920_173625.hifi_reads
-    - m64012_190921_234837.hifi_reads
+    - m84090_250709_022231_s1.hifi_reads.bc2008
 
 phasing:
   enabled: true  # Set to true to enable variant calling and haplotype phasing
