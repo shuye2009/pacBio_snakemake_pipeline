@@ -18,14 +18,17 @@ def img_to_base64(img_path):
 
 def main():
     parser = argparse.ArgumentParser(description='Generate methylation analysis HTML report')
-    parser.add_argument('--heatmap', required=True, help='Path to heatmap PNG')
-    parser.add_argument('--dmr-heatmap', required=True, help='Path to significant DMR heatmap PNG')
-    parser.add_argument('--volcano', required=True, help='Path to volcano plot PNG')
+    parser.add_argument('--heatmap', required=False, help='Path to heatmap PNG')
+    parser.add_argument('--dmr-heatmap', required=False, help='Path to significant DMR heatmap PNG')
+    parser.add_argument('--volcano', required=False, help='Path to volcano plot PNG')
     parser.add_argument('--pca', required=True, help='Path to PCA plot PNG')
     parser.add_argument('--distribution', required=True, help='Path to distribution plot PNG')
-    parser.add_argument('--signature-stats', required=True, help='Path to signature stats TSV')
-    parser.add_argument('--dmr-stats', required=True, help='Path to dmr_stats_with_pvalues.tsv')
-    parser.add_argument('--region-stats', required=True, help='Path to cohort_comparison_with_pvalues.tsv')
+    parser.add_argument('--signature-stats', required=False, help='Path to signature stats TSV')
+    parser.add_argument('--dmr-stats', required=False, help='Path to dmr_stats_with_pvalues.tsv')
+    parser.add_argument('--region-stats', required=False, help='Path to cohort_comparison_with_pvalues.tsv')
+    parser.add_argument('--dss-dmr', required=False, help='Path to DSS DMR results TSV')
+    parser.add_argument('--dss-dml', required=False, help='Path to DSS DML results TSV')
+    parser.add_argument('--dss-dmr-heatmap', required=False, help='Path to DSS DMR heatmap PNG')
     parser.add_argument('--global-heatmap', required=False, help='Path to global methylation heatmap PNG')
     parser.add_argument('--global-pca', required=False, help='Path to global methylation PCA PNG')
     parser.add_argument('--global-density-composite', required=False, help='Path to composite density plot PNG')
@@ -43,31 +46,55 @@ def main():
     n_case = len(case_samples)
     n_control = len(control_samples)
 
-    # Load DMR statistics and count significant DMRs
-    try:
-        dmr_stats = pd.read_csv(args.dmr_stats, sep='\t', comment='#')
-    except Exception:
-        dmr_stats = pd.read_csv(args.dmr_stats, sep='\t', on_bad_lines='skip')
-    
-    # Count significant DMRs (those shown in DMR heatmap)
-    if 'significant' in dmr_stats.columns:
-        n_sig_dmrs = dmr_stats['significant'].sum()
-    else:
-        n_sig_dmrs = len(dmr_stats)
-    n_total_dmrs = len(dmr_stats)
-    
-    # Load predefined region statistics and count significant regions
-    try:
-        region_stats = pd.read_csv(args.region_stats, sep='\t', comment='#')
-    except Exception:
-        region_stats = pd.read_csv(args.region_stats, sep='\t', on_bad_lines='skip')
-    
-    # Count significant predefined regions (those shown in region heatmap)
-    if 'significant' in region_stats.columns:
-        n_sig_regions = region_stats['significant'].sum()
-    else:
-        n_sig_regions = len(region_stats)
-    n_total_regions = len(region_stats)
+    # Load DMR statistics and count significant DMRs (only if available)
+    n_sig_dmrs = 0
+    n_total_dmrs = 0
+    n_sig_regions = 0
+    n_total_regions = 0
+    has_dmr_stats = args.dmr_stats and os.path.exists(args.dmr_stats)
+    has_region_stats = args.region_stats and os.path.exists(args.region_stats)
+
+    if has_dmr_stats:
+        try:
+            dmr_stats = pd.read_csv(args.dmr_stats, sep='\t', comment='#')
+        except Exception:
+            dmr_stats = pd.read_csv(args.dmr_stats, sep='\t', on_bad_lines='skip')
+        if 'significant' in dmr_stats.columns:
+            n_sig_dmrs = dmr_stats['significant'].sum()
+        else:
+            n_sig_dmrs = len(dmr_stats)
+        n_total_dmrs = len(dmr_stats)
+
+    if has_region_stats:
+        try:
+            region_stats = pd.read_csv(args.region_stats, sep='\t', comment='#')
+        except Exception:
+            region_stats = pd.read_csv(args.region_stats, sep='\t', on_bad_lines='skip')
+        if 'significant' in region_stats.columns:
+            n_sig_regions = region_stats['significant'].sum()
+        else:
+            n_sig_regions = len(region_stats)
+        n_total_regions = len(region_stats)
+
+    # Load DSS results
+    n_dss_dmrs = 0
+    n_dss_dmls = 0
+    has_dss_dmr = args.dss_dmr and os.path.exists(args.dss_dmr)
+    has_dss_dml = args.dss_dml and os.path.exists(args.dss_dml)
+
+    if has_dss_dmr:
+        try:
+            dss_dmr = pd.read_csv(args.dss_dmr, sep='\t', comment='#')
+            n_dss_dmrs = len(dss_dmr)
+        except Exception:
+            n_dss_dmrs = 0
+
+    if has_dss_dml:
+        try:
+            dss_dml = pd.read_csv(args.dss_dml, sep='\t', comment='#')
+            n_dss_dmls = len(dss_dml)
+        except Exception:
+            n_dss_dmls = 0
 
     # Generate sample table rows
     case_rows = ''.join(f'<tr><td>{s}</td><td class="case">Case</td></tr>' for s in case_samples)
@@ -113,14 +140,22 @@ def main():
                 <div class="summary-value">{n_control}</div>
                 <div class="summary-label">Control Samples</div>
             </div>
-            <div class="summary-item">
+            {f'''<div class="summary-item">
                 <div class="summary-value">{n_sig_dmrs}</div>
                 <div class="summary-label">Significant DMRs (of {n_total_dmrs})</div>
-            </div>
-            <div class="summary-item">
+            </div>''' if has_dmr_stats else ''}
+            {f'''<div class="summary-item">
                 <div class="summary-value">{n_sig_regions}</div>
                 <div class="summary-label">Significant Regions (of {n_total_regions})</div>
-            </div>
+            </div>''' if has_region_stats else ''}
+            {f'''<div class="summary-item">
+                <div class="summary-value">{n_dss_dmrs}</div>
+                <div class="summary-label">DSS DMRs</div>
+            </div>''' if has_dss_dmr else ''}
+            {f'''<div class="summary-item">
+                <div class="summary-value">{n_dss_dmls}</div>
+                <div class="summary-label">DSS DMLs</div>
+            </div>''' if has_dss_dml else ''}
         </div>
         
         <h2>Sample Information</h2>
@@ -136,23 +171,34 @@ def main():
             <div class="figure-caption">Principal Component Analysis of methylation profiles showing sample clustering.</div>
         </div>
         
-        <h2>Differentially Methylated Regions</h2>
+        {f'''<h2>Differentially Methylated Regions</h2>
         <div class="figure">
             <img src="data:image/png;base64,{img_to_base64(args.volcano)}" alt="Volcano Plot">
             <div class="figure-caption">Volcano plot showing methylation differences vs. statistical significance.</div>
-        </div>
+        </div>''' if args.volcano and os.path.exists(args.volcano) else ''}
         
-        <h2>Methylation Heatmap (Predefined Regions)</h2>
+        {f'''<h2>Methylation Heatmap (Predefined Regions)</h2>
         <div class="figure">
             <img src="data:image/png;base64,{img_to_base64(args.heatmap)}" alt="Methylation Heatmap">
             <div class="figure-caption">Heatmap of methylation levels at significant predefined regions across all samples.</div>
-        </div>
+        </div>''' if args.heatmap and os.path.exists(args.heatmap) else ''}
         
-        <h2>Significant DMR Heatmap</h2>
+        {f'''<h2>Significant DMR Heatmap</h2>
         <div class="figure">
             <img src="data:image/png;base64,{img_to_base64(args.dmr_heatmap)}" alt="Significant DMR Heatmap">
             <div class="figure-caption">Heatmap of methylation levels at significantly differentially methylated regions (from signature analysis).</div>
-        </div>
+        </div>''' if args.dmr_heatmap and os.path.exists(args.dmr_heatmap) else ''}
+        
+        {f'''<h2>DSS Analysis Results</h2>
+        <p>DSS (Dispersion Shrinkage for Sequencing) identified {n_dss_dmrs} differentially methylated regions (DMRs) and {n_dss_dmls} differentially methylated loci (DMLs).</p>
+        <p>See <a href="../igv_dss_dmrs.html">IGV DSS DMR Report</a> and <a href="../igv_dss_dmls.html">IGV DSS DML Report</a> for interactive visualization.</p>
+        ''' if has_dss_dmr or has_dss_dml else ''}
+        
+        {f'''<h2>DSS DMR Heatmap</h2>
+        <div class="figure">
+            <img src="data:image/png;base64,{img_to_base64(args.dss_dmr_heatmap)}" alt="DSS DMR Heatmap">
+            <div class="figure-caption">Heatmap of methylation levels at all DSS-called DMRs across samples.</div>
+        </div>''' if args.dss_dmr_heatmap and os.path.exists(args.dss_dmr_heatmap) else ''}
         
         <h2>Methylation Distribution</h2>
         <div class="figure">

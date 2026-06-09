@@ -29,7 +29,7 @@ phasing:
   enabled: true  # Set to true to enable variant calling and haplotype phasing
 
 pbmm2:
-  threads: 8
+  threads: 16
   preset: "HIFI"
 
 deepvariant:
@@ -38,10 +38,10 @@ deepvariant:
   singularity_image: "/cluster/projects/hardinggroup/Shuye/singularity/deepvariant_1.10.0-gpu.sif"
 
 hiphase:
-  threads: 8
+  threads: 16
 
 pb_cpg_tools:
-  threads: 8
+  threads: 16
 
 methbat:
   threads: 16
@@ -53,7 +53,7 @@ methbat:
   regions: "/cluster/projects/hardinggroup/Shuye/resource/ENCFF912FUA_MCF10A_element_gene_links_thresholded_Engreitz_T2T_6col.bed"
 
 dss:
-  threads: 8
+  threads: 16
   delta: 0.1          # Minimum methylation difference for DML/DMR
   pvalue: 1e-5        # P-value threshold for calling DMLs/DMRs
   fdr: 0.05           # FDR cutoff (reserved)

@@ -19,7 +19,7 @@
         "partition" : "himem",
         "time" : "12:00:00",
         "memory" : "64G",
-        "ntasks-per-node" : 8
+        "ntasks-per-node" : 16
     },
 
     "DeepVariant" :
@@ -28,7 +28,7 @@
         "partition" : "gpu_short",
         "time" : "12:00:00",
         "memory" : "64G",
-        "ntasks-per-node" : 8,
+        "ntasks-per-node" : 16,
         "gres" : "gpu:1"
     },
 
@@ -37,7 +37,7 @@
         "partition" : "himem",
         "time" : "12:00:00",
         "memory" : "64G",
-        "ntasks-per-node" : 8
+        "ntasks-per-node" : 16
     },
 
     "Index_haplotagged_bam" :
@@ -53,7 +53,7 @@
         "partition" : "himem",
         "time" : "12:00:00",
         "memory" : "64G",
-        "ntasks-per-node" : 8
+        "ntasks-per-node" : 16
     },
 
     "Methbat_region_profile" :
@@ -69,7 +69,7 @@
         "partition" : "himem",
         "time" : "12:00:00",
         "memory" : "64G",
-        "ntasks-per-node" : 1
+        "ntasks-per-node" : 16
     },
 
     "Methbat_region_compare" :
@@ -173,7 +173,7 @@
         "partition" : "himem",
         "time" : "12:00:00",
         "memory" : "64G",
-        "ntasks-per-node" : 1
+        "ntasks-per-node" : 16
     },
 
     "Methbat_region_compare_haplotype" :
@@ -213,7 +213,7 @@
         "partition" : "himem",
         "time" : "24:00:00",
         "memory" : "64G",
-        "ntasks-per-node" : 8
+        "ntasks-per-node" : 16
     },
 
     "Methbat_profile_ASM" :
@@ -373,7 +373,7 @@
         "partition" : "all",
         "time" : "12:00:00",
         "memory" : "30G",
-        "ntasks-per-node" : 8
+        "ntasks-per-node" : 16
     },
 
     "DSS_analysis" :
@@ -381,7 +381,7 @@
         "partition" : "veryhimem",
         "time" : "24:00:00",
         "memory" : "128G",
-        "ntasks-per-node" : 8
+        "ntasks-per-node" : 16
     },
 
     "Convert_dss_dmr_tsv" :
@@ -400,12 +400,44 @@
         "ntasks-per-node" : 1
     },
 
+    "IGV_reports_dss_dmrs" :
+    {
+        "partition" : "himem",
+        "time" : "6:00:00",
+        "memory" : "64G",
+        "ntasks-per-node" : 1
+    },
+
+    "IGV_reports_dss_dmls" :
+    {
+        "partition" : "himem",
+        "time" : "6:00:00",
+        "memory" : "64G",
+        "ntasks-per-node" : 1
+    },
+
+    "Filter_dml_for_igv" :
+    {
+        "partition" : "all",
+        "time" : "0:30:00",
+        "memory" : "8G",
+        "ntasks-per-node" : 1
+    },
+
+    "Plot_methylation_distribution" :
+    {
+        "partition" : "all",
+        "time" : "2:00:00",
+        "memory" : "30G",
+        "ntasks-per-node" : 1
+    },
+
     "Motif_enrichment_dss_dmrs" :
     {
         "partition" : "all",
         "time" : "12:00:00",
         "memory" : "30G",
-        "ntasks-per-node" : 8
+        "ntasks-per-node" : 16
     }
 
 }

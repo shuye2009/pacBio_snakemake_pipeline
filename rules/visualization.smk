@@ -38,131 +38,169 @@ rule Index_gtf:
         """
 
 
+if ENOUGH_SAMPLES:
+
+    # =========================================================================
+    # Plot_methylation_heatmap: Generate heatmap of methylation across samples
+    #
+    # Creates a heatmap showing methylation levels at significant regions from
+    # cohort_comparison.tsv, filtered by min_delta and adjusted p-value thresholds.
+    # =============================================================================
+    rule Plot_methylation_heatmap_region:
+        input:
+            cohort_comparison=METHBAT_DIR + "/region_cohort_comparison.tsv",
+            profiles=expand(METHBAT_DIR + "/profiles_region/{sample}.region.profile.tsv", sample=ALL_SAMPLES),
+        output:
+            heatmap=VIS_DIR + "/methylation_heatmap.png",
+            heatmap_pdf=VIS_DIR + "/methylation_heatmap.pdf",
+            stats_tsv=VIS_DIR + "/region_cohort_comparison_with_pvalues.tsv",
+            sig_bed=VIS_DIR + "/significant_regions.bed",
+            sig_tsv=VIS_DIR + "/significant_regions.tsv",
+            zscore_dist_png=VIS_DIR + "/zscore_distribution_regions.png",
+            zscore_dist_pdf=VIS_DIR + "/zscore_distribution_regions.pdf",
+        params:
+            case_samples=",".join(config["samples"]["case"]),
+            control_samples=",".join(config["samples"]["control"]),
+            profile_dir=METHBAT_DIR + "/profiles_region",
+            min_delta=config["methbat"]["min_delta"],
+            pvalue_cutoff=config["methbat"]["pvalue_cutoff"],
+            script=os.path.join(SCRIPTS_DIR, "plot_methylation_heatmap.py"),
+        log:
+            config["directory"]["output"] + "/logs/visualization/heatmap.log",
+        shell:
+            """
+            mkdir -p $(dirname {output.heatmap})
+            mkdir -p $(dirname {log})
+            
+            /cluster/home/t128737uhn/miniconda3/bin/python {params.script} \
+                --cohort-comparison {input.cohort_comparison} \
+                --profile-dir {params.profile_dir} \
+                --case-samples {params.case_samples} \
+                --control-samples {params.control_samples} \
+                --min-delta {params.min_delta} \
+                --pvalue-cutoff {params.pvalue_cutoff} \
+                --output-png {output.heatmap} \
+                --output-pdf {output.heatmap_pdf} \
+                --output-tsv {output.stats_tsv} \
+                --output-bed {output.sig_bed} \
+                --output-igv-tsv {output.sig_tsv} \
+                --output-zscore-dist-png {output.zscore_dist_png} \
+                --output-zscore-dist-pdf {output.zscore_dist_pdf} \
+                2>&1 | tee {log}
+            """
+
+
+# =========================================================================
+    # Plot_dmr_volcano: Volcano plot of differentially methylated regions
+    #
+    # Shows the relationship between methylation difference (delta) and
+    # statistical significance (z-score) for each region.
+    # =========================================================================
+    rule Plot_dmr_volcano:
+        input:
+            stats=METHBAT_BASE + "/signature.signature_stats.tsv",
+        output:
+            volcano=VIS_BASE + "/dmr_volcano.png",
+            volcano_pdf=VIS_BASE + "/dmr_volcano.pdf",
+            stats_tsv=VIS_BASE + "/dmr_stats_with_pvalues.tsv",
+            zscore_dist_png=VIS_BASE + "/zscore_distribution_dmrs.png",
+            zscore_dist_pdf=VIS_BASE + "/zscore_distribution_dmrs.pdf",
+        params:
+            min_delta=config["methbat"]["min_delta"],
+            pvalue_cutoff=config["methbat"]["pvalue_cutoff"],
+            script=os.path.join(SCRIPTS_DIR, "plot_dmr_volcano.py"),
+        log:
+            config["directory"]["output"] + "/logs/visualization/volcano.log",
+        shell:
+            """
+            mkdir -p $(dirname {output.volcano})
+            mkdir -p $(dirname {log})
+            
+            /cluster/home/t128737uhn/miniconda3/bin/python {params.script} \
+                --stats {input.stats} \
+                --min-delta {params.min_delta} \
+                --pvalue-cutoff {params.pvalue_cutoff} \
+                --output-png {output.volcano} \
+                --output-pdf {output.volcano_pdf} \
+                --output-tsv {output.stats_tsv} \
+                --output-zscore-dist-png {output.zscore_dist_png} \
+                --output-zscore-dist-pdf {output.zscore_dist_pdf} \
+                2>&1 | tee {log}
+            """
+
+
+    # =========================================================================
+    # Plot_significant_dmr_heatmap: Heatmap of significant DMRs only
+    #
+    # Shows methylation levels at significantly differentially methylated regions.
+    # DMR coordinates from dmr_stats_with_pvalues.tsv (significant=True), methylation from combined.bed.gz.
+    # =========================================================================
+    rule Plot_significant_dmr_heatmap:
+        input:
+            dmr_stats=VIS_BASE + "/dmr_stats_with_pvalues.tsv",
+            beds=expand(config["directory"]["output"] + "/pb_cpg_tools/{sample}.combined.bed.gz", sample=ALL_SAMPLES),
+        output:
+            heatmap=VIS_BASE + "/significant_dmr_heatmap.png",
+            heatmap_pdf=VIS_BASE + "/significant_dmr_heatmap.pdf",
+            sig_bed=VIS_BASE + "/significant_dmrs.bed",
+            sig_tsv=VIS_BASE + "/significant_dmrs.tsv",
+        params:
+            case_samples=",".join(config["samples"]["case"]),
+            control_samples=",".join(config["samples"]["control"]),
+            bed_dir=config["directory"]["output"] + "/pb_cpg_tools",
+            script=os.path.join(SCRIPTS_DIR, "plot_significant_dmr_heatmap.py"),
+        log:
+            config["directory"]["output"] + "/logs/visualization/significant_dmr_heatmap.log",
+        shell:
+            """
+            mkdir -p $(dirname {output.heatmap})
+            mkdir -p $(dirname {log})
+            
+            /cluster/home/t128737uhn/miniconda3/bin/python {params.script} \
+                --dmr-stats {input.dmr_stats} \
+                --bed-dir {params.bed_dir} \
+                --case-samples {params.case_samples} \
+                --control-samples {params.control_samples} \
+                --output-png {output.heatmap} \
+                --output-pdf {output.heatmap_pdf} \
+                --output-bed {output.sig_bed} \
+                --output-tsv {output.sig_tsv} \
+                2>&1 | tee {log}
+            """
+
+
 # =============================================================================
-# Plot_methylation_heatmap: Generate heatmap of methylation across samples
+# Plot_dss_dmr_heatmap: Heatmap of DSS-called DMRs
 #
-# Creates a heatmap showing methylation levels at significant regions from
-# cohort_comparison.tsv, filtered by min_delta and adjusted p-value thresholds.
+# Shows methylation levels at all DSS DMRs without filtering.
+# Reads DSS DMR BED file directly.
 # =============================================================================
-rule Plot_methylation_heatmap_region:
+rule Plot_dss_dmr_heatmap:
     input:
-        cohort_comparison=METHBAT_DIR + "/region_cohort_comparison.tsv",
-        profiles=expand(METHBAT_DIR + "/profiles_region/{sample}.region.profile.tsv", sample=ALL_SAMPLES),
-    output:
-        heatmap=VIS_DIR + "/methylation_heatmap.png",
-        heatmap_pdf=VIS_DIR + "/methylation_heatmap.pdf",
-        stats_tsv=VIS_DIR + "/region_cohort_comparison_with_pvalues.tsv",
-        sig_bed=VIS_DIR + "/significant_regions.bed",
-        sig_tsv=VIS_DIR + "/significant_regions.tsv",
-        zscore_dist_png=VIS_DIR + "/zscore_distribution_regions.png",
-        zscore_dist_pdf=VIS_DIR + "/zscore_distribution_regions.pdf",
-    params:
-        case_samples=",".join(config["samples"]["case"]),
-        control_samples=",".join(config["samples"]["control"]),
-        profile_dir=METHBAT_DIR + "/profiles_region",
-        min_delta=config["methbat"]["min_delta"],
-        pvalue_cutoff=config["methbat"]["pvalue_cutoff"],
-        script=os.path.join(SCRIPTS_DIR, "plot_methylation_heatmap.py"),
-    log:
-        config["directory"]["output"] + "/logs/visualization/heatmap.log",
-    shell:
-        """
-        mkdir -p $(dirname {output.heatmap})
-        mkdir -p $(dirname {log})
-        
-        /cluster/home/t128737uhn/miniconda3/bin/python {params.script} \
-            --cohort-comparison {input.cohort_comparison} \
-            --profile-dir {params.profile_dir} \
-            --case-samples {params.case_samples} \
-            --control-samples {params.control_samples} \
-            --min-delta {params.min_delta} \
-            --pvalue-cutoff {params.pvalue_cutoff} \
-            --output-png {output.heatmap} \
-            --output-pdf {output.heatmap_pdf} \
-            --output-tsv {output.stats_tsv} \
-            --output-bed {output.sig_bed} \
-            --output-igv-tsv {output.sig_tsv} \
-            --output-zscore-dist-png {output.zscore_dist_png} \
-            --output-zscore-dist-pdf {output.zscore_dist_pdf} \
-            2>&1 | tee {log}
-        """
-
-
-# =============================================================================
-# Plot_dmr_volcano: Volcano plot of differentially methylated regions
-#
-# Shows the relationship between methylation difference (delta) and
-# statistical significance (z-score) for each region.
-# =============================================================================
-rule Plot_dmr_volcano:
-    input:
-        stats=METHBAT_BASE + "/signature.signature_stats.tsv",
-    output:
-        volcano=VIS_BASE + "/dmr_volcano.png",
-        volcano_pdf=VIS_BASE + "/dmr_volcano.pdf",
-        stats_tsv=VIS_BASE + "/dmr_stats_with_pvalues.tsv",
-        zscore_dist_png=VIS_BASE + "/zscore_distribution_dmrs.png",
-        zscore_dist_pdf=VIS_BASE + "/zscore_distribution_dmrs.pdf",
-    params:
-        min_delta=config["methbat"]["min_delta"],
-        pvalue_cutoff=config["methbat"]["pvalue_cutoff"],
-        script=os.path.join(SCRIPTS_DIR, "plot_dmr_volcano.py"),
-    log:
-        config["directory"]["output"] + "/logs/visualization/volcano.log",
-    shell:
-        """
-        mkdir -p $(dirname {output.volcano})
-        mkdir -p $(dirname {log})
-        
-        /cluster/home/t128737uhn/miniconda3/bin/python {params.script} \
-            --stats {input.stats} \
-            --min-delta {params.min_delta} \
-            --pvalue-cutoff {params.pvalue_cutoff} \
-            --output-png {output.volcano} \
-            --output-pdf {output.volcano_pdf} \
-            --output-tsv {output.stats_tsv} \
-            --output-zscore-dist-png {output.zscore_dist_png} \
-            --output-zscore-dist-pdf {output.zscore_dist_pdf} \
-            2>&1 | tee {log}
-        """
-
-
-# =============================================================================
-# Plot_significant_dmr_heatmap: Heatmap of significant DMRs only
-#
-# Shows methylation levels at significantly differentially methylated regions.
-# DMR coordinates from dmr_stats_with_pvalues.tsv (significant=True), methylation from combined.bed.gz.
-# =============================================================================
-rule Plot_significant_dmr_heatmap:
-    input:
-        dmr_stats=VIS_BASE + "/dmr_stats_with_pvalues.tsv",
+        dmr_bed=DSS_BASE + "/dmr_results.bed",
         beds=expand(config["directory"]["output"] + "/pb_cpg_tools/{sample}.combined.bed.gz", sample=ALL_SAMPLES),
     output:
-        heatmap=VIS_BASE + "/significant_dmr_heatmap.png",
-        heatmap_pdf=VIS_BASE + "/significant_dmr_heatmap.pdf",
-        sig_bed=VIS_BASE + "/significant_dmrs.bed",
-        sig_tsv=VIS_BASE + "/significant_dmrs.tsv",
+        heatmap=VIS_BASE + "/dss_dmr_heatmap.png",
+        heatmap_pdf=VIS_BASE + "/dss_dmr_heatmap.pdf",
     params:
         case_samples=",".join(config["samples"]["case"]),
         control_samples=",".join(config["samples"]["control"]),
         bed_dir=config["directory"]["output"] + "/pb_cpg_tools",
-        script=os.path.join(SCRIPTS_DIR, "plot_significant_dmr_heatmap.py"),
+        script=os.path.join(SCRIPTS_DIR, "plot_dss_dmr_heatmap.py"),
     log:
-        config["directory"]["output"] + "/logs/visualization/significant_dmr_heatmap.log",
+        config["directory"]["output"] + "/logs/visualization/dss_dmr_heatmap.log",
     shell:
         """
         mkdir -p $(dirname {output.heatmap})
         mkdir -p $(dirname {log})
         
         /cluster/home/t128737uhn/miniconda3/bin/python {params.script} \
-            --dmr-stats {input.dmr_stats} \
+            --dmr-bed {input.dmr_bed} \
             --bed-dir {params.bed_dir} \
             --case-samples {params.case_samples} \
             --control-samples {params.control_samples} \
             --output-png {output.heatmap} \
             --output-pdf {output.heatmap_pdf} \
-            --output-bed {output.sig_bed} \
-            --output-tsv {output.sig_tsv} \
             2>&1 | tee {log}
         """
 
@@ -201,91 +239,92 @@ rule Plot_sample_pca_region:
         """
 
 
+if ENOUGH_SAMPLES:
 
-# =============================================================================
-# IGV_reports: Generate interactive IGV HTML reports for significant regions
-#
-# Creates browsable HTML reports with IGV.js for visualizing significant
-# regions and DMRs with haplotagged BAM tracks.
-# =============================================================================
-rule IGV_reports_regions:
-    input:
-        tsv=VIS_DIR + "/significant_regions.tsv",
-        bed=VIS_DIR + "/significant_regions.bed",
-        fasta=config["genome"]["fasta"],
-        gtf=config["directory"]["output"] + "/visualization/genes.sorted.gtf.gz",
-        gtf_index=config["directory"]["output"] + "/visualization/genes.sorted.gtf.gz.tbi",
-        bams=expand(config["directory"]["output"] + "/phased/{sample}.haplotagged.bam", sample=ALL_SAMPLES),
-        bais=expand(config["directory"]["output"] + "/phased/{sample}.haplotagged.bam.bai", sample=ALL_SAMPLES),
-    output:
-        report=VIS_DIR + "/igv_significant_regions.html",
-        track_config=VIS_DIR + "/igv_regions_track_config.json",
-    params:
-        bam_args=lambda wildcards, input: " ".join(input.bams),
-        script=os.path.join(SCRIPTS_DIR, "generate_igv_track_config.py"),
-    log:
-        config["directory"]["output"] + "/logs/visualization/igv_regions.log",
-    shell:
-        """
-        mkdir -p $(dirname {output.report})
-        mkdir -p $(dirname {log})
-        
-        # Generate track config for BAM files with haplotype grouping and methylation coloring
-        /cluster/home/t128737uhn/miniconda3/bin/python {params.script} \
-            --bams {params.bam_args} \
-            --output {output.track_config}
-        
-        module load igv-reports
-        
-        create_report {input.tsv} \
-            --fasta {input.fasta} \
-            --sequence 1 --begin 2 --end 3 \
-            --info-columns NAME DELTA ADJ_PVALUE \
-            --tracks {input.bed} {input.gtf} \
-            --track-config {output.track_config} \
-            --output {output.report} \
-            2>&1 | tee {log}
-        """
+    # =========================================================================
+    # IGV_reports: Generate interactive IGV HTML reports for significant regions
+    #
+    # Creates browsable HTML reports with IGV.js for visualizing significant
+    # regions and DMRs with haplotagged BAM tracks.
+    # =========================================================================
+    rule IGV_reports_regions:
+        input:
+            tsv=VIS_DIR + "/significant_regions.tsv",
+            bed=VIS_DIR + "/significant_regions.bed",
+            fasta=config["genome"]["fasta"],
+            gtf=config["directory"]["output"] + "/visualization/genes.sorted.gtf.gz",
+            gtf_index=config["directory"]["output"] + "/visualization/genes.sorted.gtf.gz.tbi",
+            bams=expand(config["directory"]["output"] + "/phased/{sample}.haplotagged.bam", sample=ALL_SAMPLES),
+            bais=expand(config["directory"]["output"] + "/phased/{sample}.haplotagged.bam.bai", sample=ALL_SAMPLES),
+        output:
+            report=VIS_DIR + "/igv_significant_regions.html",
+            track_config=VIS_DIR + "/igv_regions_track_config.json",
+        params:
+            bam_args=lambda wildcards, input: " ".join(input.bams),
+            script=os.path.join(SCRIPTS_DIR, "generate_igv_track_config.py"),
+        log:
+            config["directory"]["output"] + "/logs/visualization/igv_regions.log",
+        shell:
+            """
+            mkdir -p $(dirname {output.report})
+            mkdir -p $(dirname {log})
+            
+            # Generate track config for BAM files with haplotype grouping and methylation coloring
+            /cluster/home/t128737uhn/miniconda3/bin/python {params.script} \
+                --bams {params.bam_args} \
+                --output {output.track_config}
+            
+            module load igv-reports
+            
+            create_report {input.tsv} \
+                --fasta {input.fasta} \
+                --sequence 1 --begin 2 --end 3 \
+                --info-columns NAME DELTA ADJ_PVALUE \
+                --tracks {input.bed} {input.gtf} \
+                --track-config {output.track_config} \
+                --output {output.report} \
+                2>&1 | tee {log}
+            """
 
 
-rule IGV_reports_dmrs:
-    input:
-        tsv=VIS_BASE + "/significant_dmrs.tsv",
-        bed=VIS_BASE + "/significant_dmrs.bed",
-        fasta=config["genome"]["fasta"],
-        gtf=config["directory"]["output"] + "/visualization/genes.sorted.gtf.gz",
-        gtf_index=config["directory"]["output"] + "/visualization/genes.sorted.gtf.gz.tbi",
-        bams=expand(config["directory"]["output"] + "/phased/{sample}.haplotagged.bam", sample=ALL_SAMPLES),
-        bais=expand(config["directory"]["output"] + "/phased/{sample}.haplotagged.bam.bai", sample=ALL_SAMPLES),
-    output:
-        report=VIS_BASE + "/igv_significant_dmrs.html",
-        track_config=VIS_BASE + "/igv_dmrs_track_config.json",
-    params:
-        bam_args=lambda wildcards, input: " ".join(input.bams),
-        script=os.path.join(SCRIPTS_DIR, "generate_igv_track_config.py"),
-    log:
-        config["directory"]["output"] + "/logs/visualization/igv_dmrs.log",
-    shell:
-        """
-        mkdir -p $(dirname {output.report})
-        mkdir -p $(dirname {log})
-        
-        # Generate track config for BAM files with haplotype grouping and methylation coloring
-        /cluster/home/t128737uhn/miniconda3/bin/python {params.script} \
-            --bams {params.bam_args} \
-            --output {output.track_config}
-        
-        module load igv-reports
-        
-        create_report {input.tsv} \
-            --fasta {input.fasta} \
-            --sequence 1 --begin 2 --end 3 \
-            --info-columns NAME DELTA ADJ_PVALUE \
-            --tracks {input.bed} {input.gtf} \
-            --track-config {output.track_config} \
-            --output {output.report} \
-            2>&1 | tee {log}
-        """
+    rule IGV_reports_dmrs:
+        input:
+            tsv=VIS_BASE + "/significant_dmrs.tsv",
+            bed=VIS_BASE + "/significant_dmrs.bed",
+            fasta=config["genome"]["fasta"],
+            gtf=config["directory"]["output"] + "/visualization/genes.sorted.gtf.gz",
+            gtf_index=config["directory"]["output"] + "/visualization/genes.sorted.gtf.gz.tbi",
+            bams=expand(config["directory"]["output"] + "/phased/{sample}.haplotagged.bam", sample=ALL_SAMPLES),
+            bais=expand(config["directory"]["output"] + "/phased/{sample}.haplotagged.bam.bai", sample=ALL_SAMPLES),
+        output:
+            report=VIS_BASE + "/igv_significant_dmrs.html",
+            track_config=VIS_BASE + "/igv_dmrs_track_config.json",
+        params:
+            bam_args=lambda wildcards, input: " ".join(input.bams),
+            script=os.path.join(SCRIPTS_DIR, "generate_igv_track_config.py"),
+        log:
+            config["directory"]["output"] + "/logs/visualization/igv_dmrs.log",
+        shell:
+            """
+            mkdir -p $(dirname {output.report})
+            mkdir -p $(dirname {log})
+            
+            # Generate track config for BAM files with haplotype grouping and methylation coloring
+            /cluster/home/t128737uhn/miniconda3/bin/python {params.script} \
+                --bams {params.bam_args} \
+                --output {output.track_config}
+            
+            module load igv-reports
+            
+            create_report {input.tsv} \
+                --fasta {input.fasta} \
+                --sequence 1 --begin 2 --end 3 \
+                --info-columns NAME DELTA ADJ_PVALUE \
+                --tracks {input.bed} {input.gtf} \
+                --track-config {output.track_config} \
+                --output {output.report} \
+                2>&1 | tee {log}
+            """
 
 
 # =============================================================================
@@ -575,14 +614,8 @@ if PHASING_ENABLED:
 # =============================================================================
 rule Generate_report:
     input:
-        heatmap=VIS_DIR + "/methylation_heatmap.png",
-        dmr_heatmap=VIS_BASE + "/significant_dmr_heatmap.png",
-        volcano=VIS_BASE + "/dmr_volcano.png",
         pca=VIS_DIR + "/region_sample_pca.png",
         dist=config["directory"]["output"] + "/global/methylation_distribution.png",
-        signature_stats=METHBAT_BASE + "/signature.signature_stats.tsv",
-        dmr_stats=VIS_BASE + "/dmr_stats_with_pvalues.tsv",
-        region_stats=VIS_DIR + "/region_cohort_comparison_with_pvalues.tsv",
         global_heatmap=config["directory"]["output"] + "/global/global_methylation_heatmap.png",
         global_pca=config["directory"]["output"] + "/global/global_methylation_pca.png",
         global_density_composite=config["directory"]["output"] + "/global/density/composite_density.png",
@@ -594,6 +627,9 @@ rule Generate_report:
             config["directory"]["output"] + "/global/density/{sample}.per_chrom_density.png",
             sample=ALL_SAMPLES
         ),
+        dss_dmr=DSS_BASE + "/dmr_results.tsv",
+        dss_dml=DSS_BASE + "/dml_results.tsv",
+        dss_dmr_heatmap=VIS_BASE + "/dss_dmr_heatmap.png",
     output:
         report=VIS_DIR + "/methylation_report.html",
     params:
@@ -603,29 +639,40 @@ rule Generate_report:
         samples=" ".join(ALL_SAMPLES),
     log:
         config["directory"]["output"] + "/logs/visualization/report.log",
-    shell:
-        """
-        mkdir -p $(dirname {output.report})
-        mkdir -p $(dirname {log})
-        
-        /cluster/home/t128737uhn/miniconda3/bin/python {params.script} \
-            --heatmap {input.heatmap} \
-            --dmr-heatmap {input.dmr_heatmap} \
-            --volcano {input.volcano} \
-            --pca {input.pca} \
-            --distribution {input.dist} \
-            --signature-stats {input.signature_stats} \
-            --dmr-stats {input.dmr_stats} \
-            --region-stats {input.region_stats} \
-            --global-heatmap {input.global_heatmap} \
-            --global-pca {input.global_pca} \
-            --global-density-composite {input.global_density_composite} \
-            --global-density-per-sample {input.global_density_per_sample} \
-            --global-density-per-sample-samples {params.samples} \
-            --global-density-per-chrom {input.global_density_per_chrom} \
-            --global-density-per-chrom-samples {params.samples} \
-            --case-samples {params.case_samples} \
-            --control-samples {params.control_samples} \
-            --output {output.report} \
-            2>&1 | tee {log}
-        """
+    run:
+        import os, subprocess
+
+        os.makedirs(os.path.dirname(output.report), exist_ok=True)
+        os.makedirs(os.path.dirname(log[0]), exist_ok=True)
+
+        cmd = [
+            "/cluster/home/t128737uhn/miniconda3/bin/python", params.script,
+            "--pca", input.pca,
+            "--distribution", input.dist,
+            "--global-heatmap", input.global_heatmap,
+            "--global-pca", input.global_pca,
+            "--global-density-composite", input.global_density_composite,
+            "--global-density-per-sample", " ".join(input.global_density_per_sample),
+            "--global-density-per-sample-samples", params.samples,
+            "--global-density-per-chrom", " ".join(input.global_density_per_chrom),
+            "--global-density-per-chrom-samples", params.samples,
+            "--case-samples", params.case_samples,
+            "--control-samples", params.control_samples,
+            "--dss-dmr", input.dss_dmr,
+            "--dss-dml", input.dss_dml,
+            "--dss-dmr-heatmap", input.dss_dmr_heatmap,
+            "--output", output.report,
+        ]
+
+        if ENOUGH_SAMPLES:
+            cmd.extend([
+                "--heatmap", VIS_DIR + "/methylation_heatmap.png",
+                "--dmr-heatmap", VIS_BASE + "/significant_dmr_heatmap.png",
+                "--volcano", VIS_BASE + "/dmr_volcano.png",
+                "--signature-stats", METHBAT_BASE + "/signature.signature_stats.tsv",
+                "--dmr-stats", VIS_BASE + "/dmr_stats_with_pvalues.tsv",
+                "--region-stats", VIS_DIR + "/region_cohort_comparison_with_pvalues.tsv",
+            ])
+
+        with open(log[0], "w") as log_f:
+            subprocess.run(cmd, stdout=log_f, stderr=subprocess.STDOUT, check=True)

@@ -191,7 +191,6 @@ rule Compute_bin_annotation:
         centromeres=config["genome"]["centromere"],
         enhancers=config["genome"]["enhancer"],
         cgi=config["genome"]["cgi"],
-        dmrs=VIS_BASE + "/significant_dmrs.bed",
         dml=DSS_BASE + "/dml_results.bed",
         dmr=DSS_BASE + "/dmr_results.bed",
     output:
@@ -201,25 +200,22 @@ rule Compute_bin_annotation:
         bin_size=config["global"]["bin_size"],
     log:
         config["directory"]["output"] + "/logs/global/bin_annotation.log",
-    shell:
-        """
-        mkdir -p $(dirname {output.tsv})
-        mkdir -p $(dirname {log})
-
-        /cluster/home/t128737uhn/miniconda3/bin/python {params.script} \
-            --fai {input.fai} \
-            --bin-size {params.bin_size} \
-            --genes {input.genes} \
-            --repeats {input.repeats} \
-            --centromeres {input.centromeres} \
-            --enhancers {input.enhancers} \
-            --cgi {input.cgi} \
-            --dmrs {input.dmrs} \
-            --dml {input.dml} \
-            --dmr {input.dmr} \
-            --output-tsv {output.tsv} \
-            2>&1 | tee {log}
-        """
+    run:
+        import os, subprocess
+        os.makedirs(os.path.dirname(output.tsv), exist_ok=True)
+        os.makedirs(os.path.dirname(log[0]), exist_ok=True)
+        cmd = [
+            "/cluster/home/t128737uhn/miniconda3/bin/python", params.script,
+            "--fai", input.fai, "--bin-size", str(params.bin_size),
+            "--genes", input.genes, "--repeats", input.repeats,
+            "--centromeres", input.centromeres, "--enhancers", input.enhancers,
+            "--cgi", input.cgi, "--dml", input.dml, "--dmr", input.dmr,
+        ]
+        if ENOUGH_SAMPLES:
+            cmd.extend(["--dmrs", VIS_BASE + "/significant_dmrs.bed"])
+        cmd.extend(["--output-tsv", output.tsv])
+        with open(log[0], "w") as log_f:
+            subprocess.run(cmd, stdout=log_f, stderr=subprocess.STDOUT, check=True)
 
 # =============================================================================
 # Plot_methylation_distribution: Distribution of methylation levels per sample

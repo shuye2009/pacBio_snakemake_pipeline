@@ -6,6 +6,7 @@ configfile: "config/config.yaml"
 
 ALL_SAMPLES = config["samples"]["case"] + config["samples"]["control"]
 PHASING_ENABLED = config.get("phasing", {}).get("enabled", False)
+ENOUGH_SAMPLES = len(ALL_SAMPLES) >= 3
 
 # Dynamically set methbat regions from target (e.g., enhancer, cgi, centromere, repeat)
 TARGET = config.get("target", "enhancer")
@@ -38,30 +39,9 @@ def get_all_outputs():
         config["directory"]["output"] + "/global/bin_annotation.tsv",
         config["directory"]["output"] + "/global/density/composite_density.png",
     ] + expand(config["directory"]["output"] + "/global/density/{sample}.per_chrom_density.png", sample=ALL_SAMPLES) + [
-        METHBAT_BASE + "/signature.signature_regions.bed",
-        METHBAT_BASE + "/signature.signature_stats.tsv",
-        METHBAT_DIR + "/region_cohort_comparison.tsv",
         VIS_DIR + "/methylation_report.html",
-        VIS_DIR + "/igv_significant_regions.html",
-        VIS_BASE + "/igv_significant_dmrs.html",
         VIS_BASE + "/igv_dss_dmrs.html",
         VIS_BASE + "/igv_dss_dmls.html",
-        FUNC_BASE + "/dmr_annotations.tsv",
-        FUNC_BASE + "/dmr_annotation_distribution.png",
-        FUNC_BASE + "/dmr_annotation_distribution.pdf",
-        FUNC_BASE + "/dmr_gene_associations.tsv",
-        FUNC_BASE + "/hyper_dmr_go_enrichment.tsv",
-        FUNC_BASE + "/hypo_dmr_go_enrichment.tsv",
-        FUNC_BASE + "/hyper_dmr_go_enrichment.png",
-        FUNC_BASE + "/hypo_dmr_go_enrichment.png",
-        FUNC_BASE + "/hyper_dmr_kegg_enrichment.tsv",
-        FUNC_BASE + "/hypo_dmr_kegg_enrichment.tsv",
-        FUNC_BASE + "/hyper_dmr_kegg_enrichment.png",
-        FUNC_BASE + "/hypo_dmr_kegg_enrichment.png",
-        FUNC_BASE + "/dmr_motif_enrichment.tsv",
-        FUNC_BASE + "/dmr_motif_enrichment.png",
-        FUNC_BASE + "/dmr_motif_enrichment.pdf",
-        FUNC_BASE + "/dmr_motif_enrichment.html",
         FUNC_BASE + "/dss_dmr_annotations.tsv",
         FUNC_BASE + "/dss_dmr_annotation_distribution.png",
         FUNC_BASE + "/dss_dmr_annotation_distribution.pdf",
@@ -82,8 +62,34 @@ def get_all_outputs():
         DSS_BASE + "/dml_results.bed",
         DSS_BASE + "/dmr_results.tsv",
         DSS_BASE + "/dmr_results.bed",
+        VIS_BASE + "/dss_dmr_heatmap.png",
+        VIS_BASE + "/dss_dmr_heatmap.pdf",
     ]
-    if PHASING_ENABLED:
+    if ENOUGH_SAMPLES:
+        outputs.extend([
+            METHBAT_BASE + "/signature.signature_regions.bed",
+            METHBAT_BASE + "/signature.signature_stats.tsv",
+            METHBAT_DIR + "/region_cohort_comparison.tsv",
+            VIS_DIR + "/igv_significant_regions.html",
+            VIS_BASE + "/igv_significant_dmrs.html",
+            FUNC_BASE + "/dmr_annotations.tsv",
+            FUNC_BASE + "/dmr_annotation_distribution.png",
+            FUNC_BASE + "/dmr_annotation_distribution.pdf",
+            FUNC_BASE + "/dmr_gene_associations.tsv",
+            FUNC_BASE + "/hyper_dmr_go_enrichment.tsv",
+            FUNC_BASE + "/hypo_dmr_go_enrichment.tsv",
+            FUNC_BASE + "/hyper_dmr_go_enrichment.png",
+            FUNC_BASE + "/hypo_dmr_go_enrichment.png",
+            FUNC_BASE + "/hyper_dmr_kegg_enrichment.tsv",
+            FUNC_BASE + "/hypo_dmr_kegg_enrichment.tsv",
+            FUNC_BASE + "/hyper_dmr_kegg_enrichment.png",
+            FUNC_BASE + "/hypo_dmr_kegg_enrichment.png",
+            FUNC_BASE + "/dmr_motif_enrichment.tsv",
+            FUNC_BASE + "/dmr_motif_enrichment.png",
+            FUNC_BASE + "/dmr_motif_enrichment.pdf",
+            FUNC_BASE + "/dmr_motif_enrichment.html",
+        ])
+    if PHASING_ENABLED and ENOUGH_SAMPLES:
         outputs.extend([
             METHBAT_BASE + "/signature_hap1.signature_regions.bed",
             METHBAT_BASE + "/signature_hap1.signature_stats.tsv",
@@ -91,6 +97,9 @@ def get_all_outputs():
             METHBAT_BASE + "/signature_hap2.signature_stats.tsv",
             METHBAT_DIR + "/region_cohort_comparison_hap1.tsv",
             METHBAT_DIR + "/region_cohort_comparison_hap2.tsv",
+        ])
+    if PHASING_ENABLED:
+        outputs.extend([
             # ASM analysis outputs (separate for case and control groups)
             METHBAT_BASE + "/asm_case.meth_regions.bed",
             METHBAT_BASE + "/asm_control.meth_regions.bed",

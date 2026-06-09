@@ -129,35 +129,37 @@ rule Methbat_region_build:
         """
 
 
-# =============================================================================
-# Methbat_compare: Compare methylation between case and control cohorts
-# 
-# Performs statistical comparison of methylation levels at each region
-# between case and control groups. Outputs comparison statistics.
-# =============================================================================
-rule Methbat_region_compare:
-    input:
-        cohort_profile=METHBAT_DIR + "/region_cohort.profile.tsv",
-    output:
-        comparison=METHBAT_DIR + "/region_cohort_comparison.tsv",
-    log:
-        config["directory"]["output"] + "/logs/methbat/compare.log",
-    shell:
-        """
-        set +u
-        source /cluster/home/t128737uhn/miniconda3/etc/profile.d/conda.sh
-        conda activate methbat
-        set -u
-        mkdir -p $(dirname {output.comparison})
-        mkdir -p $(dirname {log})
-        methbat compare \
-            --input-profile {input.cohort_profile} \
-            --output-comparison {output.comparison} \
-            --baseline-category control \
-            --compare-category case \
-            2>&1 | tee {log}
-        conda deactivate
-        """
+if ENOUGH_SAMPLES:
+
+    # =========================================================================
+    # Methbat_compare: Compare methylation between case and control cohorts
+    # 
+    # Performs statistical comparison of methylation levels at each region
+    # between case and control groups. Outputs comparison statistics.
+    # =========================================================================
+    rule Methbat_region_compare:
+        input:
+            cohort_profile=METHBAT_DIR + "/region_cohort.profile.tsv",
+        output:
+            comparison=METHBAT_DIR + "/region_cohort_comparison.tsv",
+        log:
+            config["directory"]["output"] + "/logs/methbat/compare.log",
+        shell:
+            """
+            set +u
+            source /cluster/home/t128737uhn/miniconda3/etc/profile.d/conda.sh
+            conda activate methbat
+            set -u
+            mkdir -p $(dirname {output.comparison})
+            mkdir -p $(dirname {log})
+            methbat compare \
+                --input-profile {input.cohort_profile} \
+                --output-comparison {output.comparison} \
+                --baseline-category control \
+                --compare-category case \
+                2>&1 | tee {log}
+            conda deactivate
+            """
 
 
 # =============================================================================
@@ -191,47 +193,49 @@ rule Create_collection:
                 f.write(f"{sample}\t{prefix}\tcontrol\n")
 
 
-# =============================================================================
-# Methbat_signature: Identify differentially methylated regions (DMRs)
-# 
-# Discovers genomic regions with significantly different methylation patterns
-# between case and control samples. Does not require predefined regions.
-# Requires at least 3 samples total.
-# =============================================================================
-rule Methbat_signature:
-    input:
-        collection=METHBAT_BASE + "/collection.tsv",
-    output:
-        regions=METHBAT_BASE + "/signature.signature_regions.bed",
-        stats=METHBAT_BASE + "/signature.signature_stats.tsv",
-    params:
-        output_prefix=METHBAT_BASE + "/signature",
-        threads=config["methbat"]["threads"],
-        min_delta=config["methbat"]["min_delta"],
-        min_zscore=config["methbat"]["min_zscore"],
-        min_sample_frac=config["methbat"]["min_sample_frac"],
-    log:
-        config["directory"]["output"] + "/logs/methbat/signature.log",
-    shell:
-        """
-        set +u
-        source /cluster/home/t128737uhn/miniconda3/etc/profile.d/conda.sh
-        conda activate methbat
-        set -u
-        mkdir -p $(dirname {params.output_prefix})
-        mkdir -p $(dirname {log})
-        methbat signature \
-            --threads {params.threads} \
-            --baseline-category control \
-            --compare-category case \
-            --input-collection {input.collection} \
-            --output-prefix {params.output_prefix} \
-            --min-delta {params.min_delta} \
-            --min-zscore {params.min_zscore} \
-            --min-sample-frac {params.min_sample_frac} \
-            2>&1 | tee {log}
-        conda deactivate
-        """
+if ENOUGH_SAMPLES:
+
+    # =========================================================================
+    # Methbat_signature: Identify differentially methylated regions (DMRs)
+    # 
+    # Discovers genomic regions with significantly different methylation patterns
+    # between case and control samples. Does not require predefined regions.
+    # Requires at least 3 samples total.
+    # =========================================================================
+    rule Methbat_signature:
+        input:
+            collection=METHBAT_BASE + "/collection.tsv",
+        output:
+            regions=METHBAT_BASE + "/signature.signature_regions.bed",
+            stats=METHBAT_BASE + "/signature.signature_stats.tsv",
+        params:
+            output_prefix=METHBAT_BASE + "/signature",
+            threads=config["methbat"]["threads"],
+            min_delta=config["methbat"]["min_delta"],
+            min_zscore=config["methbat"]["min_zscore"],
+            min_sample_frac=config["methbat"]["min_sample_frac"],
+        log:
+            config["directory"]["output"] + "/logs/methbat/signature.log",
+        shell:
+            """
+            set +u
+            source /cluster/home/t128737uhn/miniconda3/etc/profile.d/conda.sh
+            conda activate methbat
+            set -u
+            mkdir -p $(dirname {params.output_prefix})
+            mkdir -p $(dirname {log})
+            methbat signature \
+                --threads {params.threads} \
+                --baseline-category control \
+                --compare-category case \
+                --input-collection {input.collection} \
+                --output-prefix {params.output_prefix} \
+                --min-delta {params.min_delta} \
+                --min-zscore {params.min_zscore} \
+                --min-sample-frac {params.min_sample_frac} \
+                2>&1 | tee {log}
+            conda deactivate
+            """
 
 
 # =============================================================================
@@ -332,47 +336,49 @@ if config.get("phasing", {}).get("enabled", False):
                     f.write(f"{sample}_{hap}\t{prefix}\tcontrol\n")
 
 
-    # =========================================================================
-    # Methbat_signature_haplotype: DMR discovery per haplotype
-    # 
-    # Identifies differentially methylated regions separately for each haplotype.
-    # =========================================================================
-    rule Methbat_signature_haplotype:
-        input:
-            collection=METHBAT_BASE + "/collection_{haplotype}.tsv",
-        output:
-            regions=METHBAT_BASE + "/signature_{haplotype}.signature_regions.bed",
-            stats=METHBAT_BASE + "/signature_{haplotype}.signature_stats.tsv",
-        params:
-            output_prefix=METHBAT_BASE + "/signature_{haplotype}",
-            threads=config["methbat"]["threads"],
-            min_delta=config["methbat"]["min_delta"],
-            min_zscore=config["methbat"]["min_zscore"],
-            min_sample_frac=config["methbat"]["min_sample_frac"],
-        wildcard_constraints:
-            haplotype="hap1|hap2"
-        log:
-            config["directory"]["output"] + "/logs/methbat/signature_{haplotype}.log",
-        shell:
-            """
-            set +u
-            source /cluster/home/t128737uhn/miniconda3/etc/profile.d/conda.sh
-            conda activate methbat
-            set -u
-            mkdir -p $(dirname {params.output_prefix})
-            mkdir -p $(dirname {log})
-            methbat signature \
-                --threads {params.threads} \
-                --baseline-category control \
-                --compare-category case \
-                --input-collection {input.collection} \
-                --output-prefix {params.output_prefix} \
-                --min-delta {params.min_delta} \
-                --min-zscore {params.min_zscore} \
-                --min-sample-frac {params.min_sample_frac} \
-                2>&1 | tee {log}
-            conda deactivate
-            """
+    if ENOUGH_SAMPLES:
+
+        # =====================================================================
+        # Methbat_signature_haplotype: DMR discovery per haplotype
+        # 
+        # Identifies differentially methylated regions separately for each haplotype.
+        # =====================================================================
+        rule Methbat_signature_haplotype:
+            input:
+                collection=METHBAT_BASE + "/collection_{haplotype}.tsv",
+            output:
+                regions=METHBAT_BASE + "/signature_{haplotype}.signature_regions.bed",
+                stats=METHBAT_BASE + "/signature_{haplotype}.signature_stats.tsv",
+            params:
+                output_prefix=METHBAT_BASE + "/signature_{haplotype}",
+                threads=config["methbat"]["threads"],
+                min_delta=config["methbat"]["min_delta"],
+                min_zscore=config["methbat"]["min_zscore"],
+                min_sample_frac=config["methbat"]["min_sample_frac"],
+            wildcard_constraints:
+                haplotype="hap1|hap2"
+            log:
+                config["directory"]["output"] + "/logs/methbat/signature_{haplotype}.log",
+            shell:
+                """
+                set +u
+                source /cluster/home/t128737uhn/miniconda3/etc/profile.d/conda.sh
+                conda activate methbat
+                set -u
+                mkdir -p $(dirname {params.output_prefix})
+                mkdir -p $(dirname {log})
+                methbat signature \
+                    --threads {params.threads} \
+                    --baseline-category control \
+                    --compare-category case \
+                    --input-collection {input.collection} \
+                    --output-prefix {params.output_prefix} \
+                    --min-delta {params.min_delta} \
+                    --min-zscore {params.min_zscore} \
+                    --min-sample-frac {params.min_sample_frac} \
+                    2>&1 | tee {log}
+                conda deactivate
+                """
 
 
     # =========================================================================
@@ -434,34 +440,36 @@ if config.get("phasing", {}).get("enabled", False):
             """
 
 
-    # =========================================================================
-    # Methbat_region_compare_haplotype: Compare methylation per haplotype
-    # =========================================================================
-    rule Methbat_region_compare_haplotype:
-        input:
-            cohort_profile=METHBAT_DIR + "/region_cohort_{haplotype}.profile.tsv",
-        output:
-            comparison=METHBAT_DIR + "/region_cohort_comparison_{haplotype}.tsv",
-        wildcard_constraints:
-            haplotype="hap1|hap2"
-        log:
-            config["directory"]["output"] + "/logs/methbat/compare_{haplotype}.log",
-        shell:
-            """
-            set +u
-            source /cluster/home/t128737uhn/miniconda3/etc/profile.d/conda.sh
-            conda activate methbat
-            set -u
-            mkdir -p $(dirname {output.comparison})
-            mkdir -p $(dirname {log})
-            methbat compare \
-                --input-profile {input.cohort_profile} \
-                --output-comparison {output.comparison} \
-                --baseline-category control \
-                --compare-category case \
-                2>&1 | tee {log}
-            conda deactivate
-            """
+    if ENOUGH_SAMPLES:
+
+        # =====================================================================
+        # Methbat_region_compare_haplotype: Compare methylation per haplotype
+        # =====================================================================
+        rule Methbat_region_compare_haplotype:
+            input:
+                cohort_profile=METHBAT_DIR + "/region_cohort_{haplotype}.profile.tsv",
+            output:
+                comparison=METHBAT_DIR + "/region_cohort_comparison_{haplotype}.tsv",
+            wildcard_constraints:
+                haplotype="hap1|hap2"
+            log:
+                config["directory"]["output"] + "/logs/methbat/compare_{haplotype}.log",
+            shell:
+                """
+                set +u
+                source /cluster/home/t128737uhn/miniconda3/etc/profile.d/conda.sh
+                conda activate methbat
+                set -u
+                mkdir -p $(dirname {output.comparison})
+                mkdir -p $(dirname {log})
+                methbat compare \
+                    --input-profile {input.cohort_profile} \
+                    --output-comparison {output.comparison} \
+                    --baseline-category control \
+                    --compare-category case \
+                    2>&1 | tee {log}
+                conda deactivate
+                """
 
 
     # =========================================================================
