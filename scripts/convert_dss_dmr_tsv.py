@@ -29,7 +29,14 @@ def main():
         'end': 'END',
         'diff.Methy': 'DELTA',
     })
-    df[['CHROM', 'START', 'END', 'DELTA']].to_csv(
+    required = ['CHROM', 'START', 'END', 'DELTA']
+    missing = [c for c in required if c not in df.columns]
+    if missing:
+        raise KeyError(
+            f"convert_dss_dmr_tsv: required columns {missing} not found "
+            f"after rename. Available columns: {list(df.columns)}"
+        )
+    df[required].to_csv(
         args.output_tsv, sep='\t', index=False
     )
 

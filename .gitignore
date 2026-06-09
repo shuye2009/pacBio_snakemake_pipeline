@@ -1,2 +1,22 @@
 sync_to_cluster.ps1
 rsync_to_cluster.ps1
+
+# Snakemake
+.snakemake/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Slurm output
+slurm_out/
+
+# Logs
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo

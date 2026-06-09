@@ -246,6 +246,7 @@ if ENOUGH_SAMPLES:
     #
     # Creates browsable HTML reports with IGV.js for visualizing significant
     # regions and DMRs with haplotagged BAM tracks.
+    # Uses haplotagged BAMs when phasing is enabled, aligned BAMs otherwise.
     # =========================================================================
     rule IGV_reports_regions:
         input:
@@ -254,14 +255,21 @@ if ENOUGH_SAMPLES:
             fasta=config["genome"]["fasta"],
             gtf=config["directory"]["output"] + "/visualization/genes.sorted.gtf.gz",
             gtf_index=config["directory"]["output"] + "/visualization/genes.sorted.gtf.gz.tbi",
-            bams=expand(config["directory"]["output"] + "/phased/{sample}.haplotagged.bam", sample=ALL_SAMPLES),
-            bais=expand(config["directory"]["output"] + "/phased/{sample}.haplotagged.bam.bai", sample=ALL_SAMPLES),
+            bams=expand(
+                config["directory"]["output"] + ("/phased/{sample}.haplotagged.bam" if PHASING_ENABLED else "/aligned/{sample}.aligned.bam"),
+                sample=ALL_SAMPLES
+            ),
+            bais=expand(
+                config["directory"]["output"] + ("/phased/{sample}.haplotagged.bam.bai" if PHASING_ENABLED else "/aligned/{sample}.aligned.bam.bai"),
+                sample=ALL_SAMPLES
+            ),
         output:
             report=VIS_DIR + "/igv_significant_regions.html",
             track_config=VIS_DIR + "/igv_regions_track_config.json",
         params:
             bam_args=lambda wildcards, input: " ".join(input.bams),
             script=os.path.join(SCRIPTS_DIR, "generate_igv_track_config.py"),
+            phasing_flag="--phasing-enabled" if PHASING_ENABLED else "",
         log:
             config["directory"]["output"] + "/logs/visualization/igv_regions.log",
         shell:
@@ -272,7 +280,8 @@ if ENOUGH_SAMPLES:
             # Generate track config for BAM files with haplotype grouping and methylation coloring
             /cluster/home/t128737uhn/miniconda3/bin/python {params.script} \
                 --bams {params.bam_args} \
-                --output {output.track_config}
+                --output {output.track_config} \
+                {params.phasing_flag}
             
             module load igv-reports
             
@@ -294,14 +303,21 @@ if ENOUGH_SAMPLES:
             fasta=config["genome"]["fasta"],
             gtf=config["directory"]["output"] + "/visualization/genes.sorted.gtf.gz",
             gtf_index=config["directory"]["output"] + "/visualization/genes.sorted.gtf.gz.tbi",
-            bams=expand(config["directory"]["output"] + "/phased/{sample}.haplotagged.bam", sample=ALL_SAMPLES),
-            bais=expand(config["directory"]["output"] + "/phased/{sample}.haplotagged.bam.bai", sample=ALL_SAMPLES),
+            bams=expand(
+                config["directory"]["output"] + ("/phased/{sample}.haplotagged.bam" if PHASING_ENABLED else "/aligned/{sample}.aligned.bam"),
+                sample=ALL_SAMPLES
+            ),
+            bais=expand(
+                config["directory"]["output"] + ("/phased/{sample}.haplotagged.bam.bai" if PHASING_ENABLED else "/aligned/{sample}.aligned.bam.bai"),
+                sample=ALL_SAMPLES
+            ),
         output:
             report=VIS_BASE + "/igv_significant_dmrs.html",
             track_config=VIS_BASE + "/igv_dmrs_track_config.json",
         params:
             bam_args=lambda wildcards, input: " ".join(input.bams),
             script=os.path.join(SCRIPTS_DIR, "generate_igv_track_config.py"),
+            phasing_flag="--phasing-enabled" if PHASING_ENABLED else "",
         log:
             config["directory"]["output"] + "/logs/visualization/igv_dmrs.log",
         shell:
@@ -312,7 +328,8 @@ if ENOUGH_SAMPLES:
             # Generate track config for BAM files with haplotype grouping and methylation coloring
             /cluster/home/t128737uhn/miniconda3/bin/python {params.script} \
                 --bams {params.bam_args} \
-                --output {output.track_config}
+                --output {output.track_config} \
+                {params.phasing_flag}
             
             module load igv-reports
             
@@ -332,6 +349,7 @@ if ENOUGH_SAMPLES:
 #
 # Creates interactive HTML report showing differentially methylated regions
 # called by DSS (Dispersion Shrinkage for Sequencing).
+# Uses haplotagged BAMs when phasing is enabled, aligned BAMs otherwise.
 # =============================================================================
 rule IGV_reports_dss_dmrs:
     input:
@@ -340,14 +358,21 @@ rule IGV_reports_dss_dmrs:
         fasta=config["genome"]["fasta"],
         gtf=config["directory"]["output"] + "/visualization/genes.sorted.gtf.gz",
         gtf_index=config["directory"]["output"] + "/visualization/genes.sorted.gtf.gz.tbi",
-        bams=expand(config["directory"]["output"] + "/phased/{sample}.haplotagged.bam", sample=ALL_SAMPLES),
-        bais=expand(config["directory"]["output"] + "/phased/{sample}.haplotagged.bam.bai", sample=ALL_SAMPLES),
+        bams=expand(
+            config["directory"]["output"] + ("/phased/{sample}.haplotagged.bam" if PHASING_ENABLED else "/aligned/{sample}.aligned.bam"),
+            sample=ALL_SAMPLES
+        ),
+        bais=expand(
+            config["directory"]["output"] + ("/phased/{sample}.haplotagged.bam.bai" if PHASING_ENABLED else "/aligned/{sample}.aligned.bam.bai"),
+            sample=ALL_SAMPLES
+        ),
     output:
         report=VIS_BASE + "/igv_dss_dmrs.html",
         track_config=VIS_BASE + "/igv_dss_dmrs_track_config.json",
     params:
         bam_args=lambda wildcards, input: " ".join(input.bams),
         script=os.path.join(SCRIPTS_DIR, "generate_igv_track_config.py"),
+        phasing_flag="--phasing-enabled" if PHASING_ENABLED else "",
     log:
         config["directory"]["output"] + "/logs/visualization/igv_dss_dmrs.log",
     shell:
@@ -358,7 +383,8 @@ rule IGV_reports_dss_dmrs:
         # Generate track config for BAM files with haplotype grouping and methylation coloring
         /cluster/home/t128737uhn/miniconda3/bin/python {params.script} \
             --bams {params.bam_args} \
-            --output {output.track_config}
+            --output {output.track_config} \
+            {params.phasing_flag}
 
         module load igv-reports
 
@@ -409,6 +435,7 @@ rule Filter_dml_for_igv:
 #
 # Creates interactive HTML report showing the top differentially methylated
 # loci (single CpG sites) called by DSS.
+# Uses haplotagged BAMs when phasing is enabled, aligned BAMs otherwise.
 # =============================================================================
 rule IGV_reports_dss_dmls:
     input:
@@ -417,14 +444,21 @@ rule IGV_reports_dss_dmls:
         fasta=config["genome"]["fasta"],
         gtf=config["directory"]["output"] + "/visualization/genes.sorted.gtf.gz",
         gtf_index=config["directory"]["output"] + "/visualization/genes.sorted.gtf.gz.tbi",
-        bams=expand(config["directory"]["output"] + "/phased/{sample}.haplotagged.bam", sample=ALL_SAMPLES),
-        bais=expand(config["directory"]["output"] + "/phased/{sample}.haplotagged.bam.bai", sample=ALL_SAMPLES),
+        bams=expand(
+            config["directory"]["output"] + ("/phased/{sample}.haplotagged.bam" if PHASING_ENABLED else "/aligned/{sample}.aligned.bam"),
+            sample=ALL_SAMPLES
+        ),
+        bais=expand(
+            config["directory"]["output"] + ("/phased/{sample}.haplotagged.bam.bai" if PHASING_ENABLED else "/aligned/{sample}.aligned.bam.bai"),
+            sample=ALL_SAMPLES
+        ),
     output:
         report=VIS_BASE + "/igv_dss_dmls.html",
         track_config=VIS_BASE + "/igv_dss_dmls_track_config.json",
     params:
         bam_args=lambda wildcards, input: " ".join(input.bams),
         script=os.path.join(SCRIPTS_DIR, "generate_igv_track_config.py"),
+        phasing_flag="--phasing-enabled" if PHASING_ENABLED else "",
     log:
         config["directory"]["output"] + "/logs/visualization/igv_dss_dmls.log",
     shell:
@@ -435,7 +469,8 @@ rule IGV_reports_dss_dmls:
         # Generate track config for BAM files with haplotype grouping and methylation coloring
         /cluster/home/t128737uhn/miniconda3/bin/python {params.script} \
             --bams {params.bam_args} \
-            --output {output.track_config}
+            --output {output.track_config} \
+            {params.phasing_flag}
 
         module load igv-reports
 

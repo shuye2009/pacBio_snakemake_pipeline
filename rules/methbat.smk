@@ -3,6 +3,7 @@
 # =============================================================================
 
 import os
+import re
 
 SCRIPTS_DIR = os.path.join(workflow.basedir, "scripts")
 
@@ -47,7 +48,7 @@ rule Methbat_region_profile:
     output:
         profile=METHBAT_DIR + "/profiles_region/{sample}.region.profile.tsv",
     wildcard_constraints:
-        sample="|".join([s.replace(".", r"\.") for s in config["samples"]["case"] + config["samples"]["control"]])
+        sample="|".join(re.escape(s) for s in config["samples"]["case"] + config["samples"]["control"])
     params:
         input_prefix=config["directory"]["output"] + "/pb_cpg_tools/{sample}",
     log:
@@ -583,7 +584,7 @@ if config.get("phasing", {}).get("enabled", False):
                         end = int(fields[2])
                         label = fields[3] if len(fields) > 3 else f"{chrom}:{start}-{end}"
                         # only include AlleleSpecificMethylation regions
-                        if(label == "AlleleSpecificMethylation"):
+                        if label.lower() == "allelespecificmethylation":
                             regions.add((chrom, start, end, label))
             
             # Sort and write
@@ -593,6 +594,12 @@ if config.get("phasing", {}).get("enabled", False):
                 for chrom, start, end, label in sorted_regions:
                     f.write(f"{chrom}\t{start}\t{end}\t{label}\n")
             
+            if len(sorted_regions) == 0:
+                raise RuntimeError(
+                    "Merge_ASM_regions: no 'AlleleSpecificMethylation' regions found in "
+                    f"case ({input.case_bed}) or control ({input.control_bed}) BED files. "
+                    "Check that methbat joint-segment produced the expected output."
+                )
             print(f"Merged {len(sorted_regions)} unique regions from case and control")
 
 
@@ -612,7 +619,7 @@ if config.get("phasing", {}).get("enabled", False):
         params:
             input_prefix=config["directory"]["output"] + "/pb_cpg_tools/{sample}",
         wildcard_constraints:
-            sample="|".join([s.replace(".", r"\.") for s in config["samples"]["case"] + config["samples"]["control"]])
+            sample="|".join(re.escape(s) for s in config["samples"]["case"] + config["samples"]["control"])
         log:
             config["directory"]["output"] + "/logs/methbat/profile_asm_{sample}.log",
         shell:
@@ -727,8 +734,11 @@ if config.get("phasing", {}).get("enabled", False):
                 
                 sig_asm.to_csv(output.comparison, sep='\t', index=False)
             else:
-                print("Warning: avg_abs_meth_deltas column not found")
-                all_df.head(0).to_csv(output.comparison, sep='\t', index=False)
+                available_cols = ', '.join(all_df.columns)
+                raise RuntimeError(
+                    f"ASM_haplotype_comparison: 'avg_abs_meth_deltas' column not found "
+                    f"in cohort profile. Available columns: {available_cols}"
+                )
             
             with open(log[0], 'w') as f:
                 f.write(f"Loaded {len(df)} entries from cohort profile\n")

@@ -24,6 +24,10 @@ cd "$PIPELINE_DIR"
 mkdir -p slurm_out
 
 # Load conda
+if ! command -v conda &> /dev/null; then
+    echo "ERROR: conda is not available on PATH. Cannot activate conda environments."
+    exit 1
+fi
 source $(conda info --base)/etc/profile.d/conda.sh
 
 # Activate snakemake environment (adjust if needed)

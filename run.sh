@@ -1,4 +1,4 @@
-#! /usr/bin/env bash
+#!/usr/bin/env bash
 
 # Override target at runtime
 case $1 in
@@ -21,4 +21,4 @@ case $1 in
 esac
 
 export TARGET
-sbatch --export=ALL,TARGET run_pacbio.sh
+sbatch --export=TARGET run_pacbio.sh

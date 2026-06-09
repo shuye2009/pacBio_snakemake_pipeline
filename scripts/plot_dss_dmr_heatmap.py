@@ -120,6 +120,10 @@ def main():
 
     meth_matrix = pd.DataFrame(meth_data)
     meth_matrix = meth_matrix.dropna(how='all')
+    nan_count = meth_matrix.isna().sum().sum()
+    if nan_count > 0:
+        print(f"Warning: {nan_count} missing methylation values imputed to 0.5 "
+              f"({nan_count / (len(meth_matrix) * len(meth_matrix.columns)) * 100:.1f}% of matrix)")
     meth_matrix = meth_matrix.fillna(0.5)
 
     print(f"Created matrix with {len(meth_matrix)} regions x {len(meth_matrix.columns)} samples")

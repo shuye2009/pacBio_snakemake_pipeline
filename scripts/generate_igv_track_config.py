@@ -15,11 +15,12 @@ def main():
     parser = argparse.ArgumentParser(description='Generate IGV track config JSON')
     parser.add_argument('--bams', nargs='+', required=True, help='BAM file paths')
     parser.add_argument('--output', required=True, help='Output JSON file path')
+    parser.add_argument('--phasing-enabled', action='store_true', help='Enable haplotype grouping by HP tag')
     args = parser.parse_args()
 
     tracks = []
     for bam in args.bams:
-        sample_name = os.path.basename(bam).replace('.haplotagged.bam', '')
+        sample_name = os.path.basename(bam).replace('.haplotagged.bam', '').replace('.aligned.bam', '')
         track = {
             "name": sample_name,
             "url": bam,
@@ -28,7 +29,6 @@ def main():
             "type": "alignment",
             "colorBy": "basemod",
             "basemodColorScheme": "5mC",
-            "groupBy": "tag:HP",
             "showSoftClips": False,
             "viewAsPairs": False,
             "height": 300,
@@ -36,6 +36,8 @@ def main():
             "showMismatches": True,
             "showInsertions": True
         }
+        if args.phasing_enabled:
+            track["groupBy"] = "tag:HP"
         tracks.append(track)
 
     with open(args.output, 'w') as f:

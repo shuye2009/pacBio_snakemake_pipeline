@@ -56,7 +56,7 @@ dss:
   threads: 16
   delta: 0.1          # Minimum methylation difference for DML/DMR
   pvalue: 1e-5        # P-value threshold for calling DMLs/DMRs
-  fdr: 0.05           # FDR cutoff (reserved)
+  fdr: 0.05           # FDR cutoff for DMR calling
   min_cpg: 3          # Minimum CpG sites per DMR
   min_length: 50      # Minimum DMR length in bp
   merge_dist: 100     # Max distance to merge adjacent DMRs

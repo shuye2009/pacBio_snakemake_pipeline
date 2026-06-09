@@ -6,6 +6,7 @@ Generate HTML summary report combining all visualizations.
 import argparse
 import pandas as pd
 import base64
+import html
 from datetime import datetime
 import os
 
@@ -57,7 +58,7 @@ def main():
     if has_dmr_stats:
         try:
             dmr_stats = pd.read_csv(args.dmr_stats, sep='\t', comment='#')
-        except Exception:
+        except pd.errors.ParserError:
             dmr_stats = pd.read_csv(args.dmr_stats, sep='\t', on_bad_lines='skip')
         if 'significant' in dmr_stats.columns:
             n_sig_dmrs = dmr_stats['significant'].sum()
@@ -68,7 +69,7 @@ def main():
     if has_region_stats:
         try:
             region_stats = pd.read_csv(args.region_stats, sep='\t', comment='#')
-        except Exception:
+        except pd.errors.ParserError:
             region_stats = pd.read_csv(args.region_stats, sep='\t', on_bad_lines='skip')
         if 'significant' in region_stats.columns:
             n_sig_regions = region_stats['significant'].sum()
@@ -97,8 +98,8 @@ def main():
             n_dss_dmls = 0
 
     # Generate sample table rows
-    case_rows = ''.join(f'<tr><td>{s}</td><td class="case">Case</td></tr>' for s in case_samples)
-    control_rows = ''.join(f'<tr><td>{s}</td><td class="control">Control</td></tr>' for s in control_samples)
+    case_rows = ''.join(f'<tr><td>{html.escape(s)}</td><td class="case">Case</td></tr>' for s in case_samples)
+    control_rows = ''.join(f'<tr><td>{html.escape(s)}</td><td class="control">Control</td></tr>' for s in control_samples)
 
     # Generate HTML
     html = f"""

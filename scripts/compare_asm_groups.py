@@ -21,10 +21,16 @@ def run_bedtools_intersect(case_bed, control_bed):
     """
     # bedtools intersect -a case -b control -wao
     # -wao: Write all original A entries plus overlap info, including unmatched
-    result = subprocess.run(
-        ['bedtools', 'intersect', '-a', case_bed, '-b', control_bed, '-wao'],
-        capture_output=True, text=True, check=True
-    )
+    try:
+        result = subprocess.run(
+            ['bedtools', 'intersect', '-a', case_bed, '-b', control_bed, '-wao'],
+            capture_output=True, text=True, check=True
+        )
+    except FileNotFoundError:
+        raise RuntimeError(
+            "compare_asm_groups: 'bedtools' not found on PATH. "
+            "Load bedtools with 'module load bedtools' before running."
+        )
     
     # Parse output: case_chrom, case_start, case_end, case_label, ctrl_chrom, ctrl_start, ctrl_end, ctrl_label, overlap
     lines = result.stdout.strip().split('\n')
