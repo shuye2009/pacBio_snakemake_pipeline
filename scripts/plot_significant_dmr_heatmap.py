@@ -148,10 +148,8 @@ def main():
         else:
             tsv_df['ADJ_PVALUE'] = np.nan
         
-        # Sort by significance and limit to top 100 for igv-reports
-        tsv_df = tsv_df.sort_values('ADJ_PVALUE', ascending=True).head(100)
         tsv_df.to_csv(args.output_tsv, sep='\t', index=False, header=True)
-        print(f"Saved top {len(tsv_df)} significant DMRs to TSV file: {args.output_tsv}")
+        print(f"Saved {len(tsv_df)} significant DMRs to TSV file: {args.output_tsv}")
     else:
         # Create empty BED file
         open(args.output_bed, 'w').close()

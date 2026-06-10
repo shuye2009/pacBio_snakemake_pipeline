@@ -42,10 +42,13 @@ if(0){
 }
 
 cat("Loading DMRs:", dmr_bed, "\n")
-dmr_gr <- import(dmr_bed, format = "bed")
+dmr_bed_df <- read.table(dmr_bed, header = FALSE, sep = "\t", stringsAsFactors = FALSE, colClasses = "character")
+dmr_bed_df[, 2] <- as.numeric(dmr_bed_df[, 2])
+dmr_bed_df[, 3] <- as.numeric(dmr_bed_df[, 3])
+dmr_gr <- makeGRangesFromDataFrame(dmr_bed_df, seqnames.field = "V1", start.field = "V2", end.field = "V3")
 dmr_gr <- reduce(dmr_gr)
 cat(sprintf("Loaded %d DMRs (%d after merging overlaps)\n",
-            length(unique(import(dmr_bed, format = "bed"))), length(dmr_gr)))
+            nrow(dmr_bed_df), length(dmr_gr)))
 
 cat("Extracting sequences from:", fasta_file, "\n")
 fa_file <- FaFile(fasta_file)
@@ -53,6 +56,10 @@ indexFa(fasta_file)
 dmr_seqs <- getSeq(fa_file, dmr_gr)
 names(dmr_seqs) <- paste0(seqnames(dmr_gr), ":", start(dmr_gr), "-", end(dmr_gr))
 cat(sprintf("Extracted %d sequences, total %d bp\n", length(dmr_seqs), sum(width(dmr_seqs))))
+if (sum(width(dmr_seqs)) > 50e6) {
+  cat(sprintf("Warning: large total DMR sequence (%d Mb) may require significant memory.\n",
+              round(sum(width(dmr_seqs)) / 1e6)))
+}
 
 cat("Loading JASPAR2024 vertebrate motifs...\n")
 opts <- list(species = 9606, collection = "CORE", all_versions = FALSE)
@@ -87,13 +94,15 @@ scan_motifs <- function(pwm, seqs, min_score = "90%") {
   nrow(as.data.frame(sites))
 }
 
-dmr_hits <- mclapply(pwm_list, scan_motifs, seqs = dmr_seqs, mc.cores = threads)
+n_motif_cores <- min(threads, 8)
+dmr_hits <- mclapply(pwm_list, scan_motifs, seqs = dmr_seqs, mc.cores = n_motif_cores)
 dmr_hits <- unlist(dmr_hits)
 names(dmr_hits) <- names(pwm_list)
 cat(sprintf("DMR motif hits: min=%d, median=%.1f, max=%d, total=%d\n",
             min(dmr_hits), median(dmr_hits), max(dmr_hits), sum(dmr_hits)))
 
 cat("Generating background sequences...\n")
+n_bg_cores <- min(threads, n_bg, 4)
 bg_hits_matrix <- do.call(cbind, mclapply(1:n_bg, function(i) {
   bg_seqs <- DNAStringSet(lapply(dmr_seqs, function(s) {
     chars <- strsplit(as.character(s), "")[[1]]
@@ -108,8 +117,9 @@ bg_hits_matrix <- do.call(cbind, mclapply(1:n_bg, function(i) {
   }))
   names(bg_seqs) <- names(dmr_seqs)
   bg_hits <- unlist(lapply(pwm_list, scan_motifs, seqs = bg_seqs))
+  rm(bg_seqs); gc()
   bg_hits
-}, mc.cores = threads))
+}, mc.cores = n_bg_cores))
 
 cat("Computing enrichment...\n")
 total_dmr_bp <- sum(width(dmr_seqs))

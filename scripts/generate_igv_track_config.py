@@ -16,6 +16,8 @@ def main():
     parser.add_argument('--bams', nargs='+', required=True, help='BAM file paths')
     parser.add_argument('--output', required=True, help='Output JSON file path')
     parser.add_argument('--phasing-enabled', action='store_true', help='Enable haplotype grouping by HP tag')
+    parser.add_argument('--gtf', default=None, help='GTF annotation file path (bgzipped, with .tbi index)')
+    parser.add_argument('--gtf-index', default=None, help='GTF tabix index path')
     args = parser.parse_args()
 
     tracks = []
@@ -39,6 +41,18 @@ def main():
         if args.phasing_enabled:
             track["groupBy"] = "tag:HP"
         tracks.append(track)
+
+    if args.gtf:
+        gtf_track = {
+            "name": "Genes",
+            "url": args.gtf,
+            "indexURL": args.gtf_index or (args.gtf + ".tbi"),
+            "format": "gtf",
+            "type": "annotation",
+            "height": 50,
+            "displayMode": "EXPANDED"
+        }
+        tracks.append(gtf_track)
 
     with open(args.output, 'w') as f:
         json.dump(tracks, f, indent=2)

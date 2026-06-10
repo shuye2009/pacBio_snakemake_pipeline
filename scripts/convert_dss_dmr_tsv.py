@@ -36,6 +36,8 @@ def main():
             f"convert_dss_dmr_tsv: required columns {missing} not found "
             f"after rename. Available columns: {list(df.columns)}"
         )
+    df['START'] = df['START'].astype(int)
+    df['END'] = df['END'].astype(int)
     df[required].to_csv(
         args.output_tsv, sep='\t', index=False
     )

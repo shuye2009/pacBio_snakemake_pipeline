@@ -78,3 +78,55 @@ rule DSS_analysis:
             --threads {params.threads} \
             2>&1 | tee {log}
         """
+
+
+# =============================================================================
+# DSS_region_comparison: Region-level methylation comparison using DSS results
+#
+# Computes per-region:
+#   - Mean methylation difference (case - control) across CpGs (pooled across samples)
+#   - CpG count per region
+#   - DSS DMR/DML overlap counts (total, hyper, hypo)
+#
+# Supports any number of case/control samples. Processes the region specified
+# in config target (e.g., enhancer, cgi).
+# =============================================================================
+rule DSS_region_comparison:
+    input:
+        case_beds=expand(
+            config["directory"]["output"] + "/pb_cpg_tools/{sample}.combined.bed.gz",
+            sample=config["samples"]["case"]
+        ),
+        control_beds=expand(
+            config["directory"]["output"] + "/pb_cpg_tools/{sample}.combined.bed.gz",
+            sample=config["samples"]["control"]
+        ),
+        dmr_bed=DSS_BASE + "/dmr_results.bed",
+        dmr_tsv=DSS_BASE + "/dmr_results.tsv",
+        dml_bed=DSS_BASE + "/dml_results.bed",
+        dml_tsv=DSS_BASE + "/dml_results.tsv",
+        region_bed=lambda wildcards: config["genome"][wildcards.region],
+    output:
+        tsv=DSS_BASE + "/{region}_comparison.tsv",
+    params:
+        script=os.path.join(SCRIPTS_DIR, "dss_region_comparison.py"),
+        case_beds=lambda wildcards, input: ",".join(input.case_beds),
+        control_beds=lambda wildcards, input: ",".join(input.control_beds),
+    log:
+        config["directory"]["output"] + "/logs/dss/{region}_comparison.log",
+    shell:
+        """
+        mkdir -p $(dirname {output.tsv})
+        mkdir -p $(dirname {log})
+
+        /cluster/home/t128737uhn/miniconda3/bin/python {params.script} \
+            --case-beds {params.case_beds} \
+            --control-beds {params.control_beds} \
+            --dmr-bed {input.dmr_bed} \
+            --dmr-tsv {input.dmr_tsv} \
+            --dml-bed {input.dml_bed} \
+            --dml-tsv {input.dml_tsv} \
+            --region-bed {input.region_bed} --region-name {wildcards.region} \
+            --output-tsv {output.tsv} \
+            2>&1 | tee {log}
+        """

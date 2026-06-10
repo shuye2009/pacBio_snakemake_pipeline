@@ -370,9 +370,9 @@
 
     "Motif_enrichment" :
     {
-        "partition" : "all",
-        "time" : "12:00:00",
-        "memory" : "30G",
+        "partition" : "himem",
+        "time" : "24:00:00",
+        "memory" : "64G",
         "ntasks-per-node" : 16
     },
 
@@ -384,7 +384,23 @@
         "ntasks-per-node" : 16
     },
 
+    "DSS_region_comparison" :
+    {
+        "partition" : "himem",
+        "time" : "8:00:00",
+        "memory" : "64G",
+        "ntasks-per-node" : 1
+    },
+
     "Convert_dss_dmr_tsv" :
+    {
+        "partition" : "all",
+        "time" : "0:30:00",
+        "memory" : "8G",
+        "ntasks-per-node" : 1
+    },
+
+    "Convert_dss_dmr_tsv_topn" :
     {
         "partition" : "all",
         "time" : "0:30:00",
@@ -424,7 +440,31 @@
         "ntasks-per-node" : 1
     },
 
+    "Filter_dmrs_for_igv" :
+    {
+        "partition" : "all",
+        "time" : "0:30:00",
+        "memory" : "8G",
+        "ntasks-per-node" : 1
+    },
+
+    "Filter_dss_dmrs_for_igv" :
+    {
+        "partition" : "all",
+        "time" : "0:30:00",
+        "memory" : "8G",
+        "ntasks-per-node" : 1
+    },
+
     "Plot_methylation_distribution" :
+    {
+        "partition" : "all",
+        "time" : "2:00:00",
+        "memory" : "30G",
+        "ntasks-per-node" : 1
+    },
+
+    "Plot_dss_dmr_heatmap" :
     {
         "partition" : "all",
         "time" : "2:00:00",
@@ -434,9 +474,9 @@
 
     "Motif_enrichment_dss_dmrs" :
     {
-        "partition" : "all",
-        "time" : "12:00:00",
-        "memory" : "30G",
+        "partition" : "himem",
+        "time" : "24:00:00",
+        "memory" : "64G",
         "ntasks-per-node" : 16
     }
 

@@ -132,6 +132,7 @@ main <- function() {
   # --- Write DML outputs ---
   dml_out <- as.data.table(dml)
   setorder(dml_out, chr, pos)
+  dml_out[, pos := as.integer(pos)]
   fwrite(dml_out, args$output_dml_tsv, sep = "\t")
 
   # DML BED: 0-based, score = -log10(pval) scaled to 0-1000
@@ -143,6 +144,7 @@ main <- function() {
     score  = as.integer(pmin(pmax(-log10(pval) * 100, 0), 1000)),
     strand = "."
   )]
+  dml_bed[, `:=`(start = as.integer(start), end = as.integer(end))]
   setcolorder(dml_bed, c("chr", "start", "end", "name", "score", "strand"))
   fwrite(dml_bed, args$output_dml_bed, sep = "\t", col.names = FALSE)
 
@@ -150,6 +152,7 @@ main <- function() {
   dmr_out <- as.data.table(dmr)
   if (nrow(dmr_out) > 0) {
     setorder(dmr_out, chr, start)
+    dmr_out[, `:=`(start = as.integer(start), end = as.integer(end))]
     fwrite(dmr_out, args$output_dmr_tsv, sep = "\t")
 
     dmr_bed <- dmr_out[, .(
@@ -158,6 +161,7 @@ main <- function() {
       score  = as.integer(pmin(pmax(-log10(areaStat) * 100, 0), 1000)),
       strand = "."
     )]
+    dmr_bed[, `:=`(start = as.integer(start), end = as.integer(end))]
     fwrite(dmr_bed, args$output_dmr_bed, sep = "\t", col.names = FALSE)
   } else {
     fwrite(dmr_out, args$output_dmr_tsv, sep = "\t")

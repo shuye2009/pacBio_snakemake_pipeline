@@ -82,7 +82,7 @@ if ENOUGH_SAMPLES:
     # =========================================================================
     rule Motif_enrichment:
         input:
-            dmr_bed=VIS_BASE + "/significant_dmrs.bed",
+            dmr_bed=VIS_BASE + f"/significant_dmrs.top{TOP_N}.bed",
             fasta=config["genome"]["fasta"],
         output:
             tsv=FUNC_BASE + "/dmr_motif_enrichment.tsv",
@@ -122,6 +122,7 @@ if ENOUGH_SAMPLES:
 #
 # DSS callDMR outputs lowercase column names (chr, start, end, diff.Methy)
 # but annotate_dmrs.R expects uppercase (CHROM, START, END, DELTA).
+# Converts the full DMR set.
 # =============================================================================
 rule Convert_dss_dmr_tsv:
     input:
@@ -132,6 +133,30 @@ rule Convert_dss_dmr_tsv:
         script=os.path.join(SCRIPTS_DIR, "convert_dss_dmr_tsv.py"),
     log:
         config["directory"]["output"] + "/logs/functional_analysis/convert_dss_dmr_tsv.log",
+    shell:
+        """
+        mkdir -p $(dirname {output.tsv})
+        mkdir -p $(dirname {log})
+
+        /cluster/home/t128737uhn/miniconda3/bin/python {params.script} \
+            --input-tsv {input.tsv} \
+            --output-tsv {output.tsv} \
+            2>&1 | tee {log}
+        """
+
+
+# =============================================================================
+# Convert_dss_dmr_tsv_topn: Convert top-N DSS DMR TSV for motif enrichment
+# =============================================================================
+rule Convert_dss_dmr_tsv_topn:
+    input:
+        tsv=DSS_BASE + f"/dmr_results.top{TOP_N}.tsv",
+    output:
+        tsv=FUNC_BASE + f"/dss_dmr_results.top{TOP_N}.converted.tsv",
+    params:
+        script=os.path.join(SCRIPTS_DIR, "convert_dss_dmr_tsv.py"),
+    log:
+        config["directory"]["output"] + "/logs/functional_analysis/convert_dss_dmr_tsv_topn.log",
     shell:
         """
         mkdir -p $(dirname {output.tsv})
@@ -214,7 +239,7 @@ rule Annotate_dss_dmrs:
 # =============================================================================
 rule Motif_enrichment_dss_dmrs:
     input:
-        dmr_bed=DSS_BASE + "/dmr_results.bed",
+        dmr_bed=DSS_BASE + f"/dmr_results.top{TOP_N}.bed",
         fasta=config["genome"]["fasta"],
     output:
         tsv=FUNC_BASE + "/dss_dmr_motif_enrichment.tsv",

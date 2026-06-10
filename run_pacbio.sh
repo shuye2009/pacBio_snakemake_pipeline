@@ -24,11 +24,12 @@ cd "$PIPELINE_DIR"
 mkdir -p slurm_out
 
 # Load conda
-if ! command -v conda &> /dev/null; then
-    echo "ERROR: conda is not available on PATH. Cannot activate conda environments."
+CONDA_BASE="/cluster/home/t128737uhn/miniconda3"
+if [ ! -f "$CONDA_BASE/etc/profile.d/conda.sh" ]; then
+    echo "ERROR: conda installation not found at $CONDA_BASE. Cannot activate conda environments."
     exit 1
 fi
-source $(conda info --base)/etc/profile.d/conda.sh
+source "$CONDA_BASE/etc/profile.d/conda.sh"
 
 # Activate snakemake environment (adjust if needed)
 module load snakemake/7.3.8

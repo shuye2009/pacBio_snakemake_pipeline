@@ -102,7 +102,7 @@ def main():
     control_rows = ''.join(f'<tr><td>{html.escape(s)}</td><td class="control">Control</td></tr>' for s in control_samples)
 
     # Generate HTML
-    html = f"""
+    html_content = f"""
 <!DOCTYPE html>
 <html>
 <head>
@@ -212,7 +212,7 @@ def main():
 
     # Global heatmap
     if args.global_heatmap and os.path.exists(args.global_heatmap):
-        html += f"""
+        html_content += f"""
         <h3>Global Methylation Heatmap</h3>
         <div class="figure">
             <img src="data:image/png;base64,{img_to_base64(args.global_heatmap)}" alt="Global Methylation Heatmap">
@@ -222,7 +222,7 @@ def main():
 
     # Global PCA
     if args.global_pca and os.path.exists(args.global_pca):
-        html += f"""
+        html_content += f"""
         <h3>Global Methylation PCA</h3>
         <div class="figure">
             <img src="data:image/png;base64,{img_to_base64(args.global_pca)}" alt="Global Methylation PCA">
@@ -232,7 +232,7 @@ def main():
 
     # Composite density
     if args.global_density_composite and os.path.exists(args.global_density_composite):
-        html += f"""
+        html_content += f"""
         <h3>Composite Density Distribution</h3>
         <div class="figure">
             <img src="data:image/png;base64,{img_to_base64(args.global_density_composite)}" alt="Composite Density">
@@ -242,12 +242,12 @@ def main():
 
     # Per-sample density plots
     if args.global_density_per_sample and args.global_density_per_sample_samples:
-        html += """
+        html_content += """
         <h3>Per-Sample Density Distributions</h3>
 """
         for png_path, sample in zip(args.global_density_per_sample, args.global_density_per_sample_samples):
             if os.path.exists(png_path):
-                html += f"""
+                html_content += f"""
         <div class="figure">
             <img src="data:image/png;base64,{img_to_base64(png_path)}" alt="Density - {sample}">
             <div class="figure-caption">Density distributions of mod_score, coverage, and estimated modified count for {sample}.</div>
@@ -256,26 +256,26 @@ def main():
 
     # Per-chromosome density plots
     if args.global_density_per_chrom and args.global_density_per_chrom_samples:
-        html += """
+        html_content += """
         <h3>Per-Chromosome Density (mod_score)</h3>
 """
         for png_path, sample in zip(args.global_density_per_chrom, args.global_density_per_chrom_samples):
             if os.path.exists(png_path):
-                html += f"""
+                html_content += f"""
         <div class="figure">
             <img src="data:image/png;base64,{img_to_base64(png_path)}" alt="Per-Chromosome Density - {sample}">
             <div class="figure-caption">Per-chromosome mod_score density for {sample}.</div>
         </div>
 """
 
-    html += """
+    html_content += """
     </div>
 </body>
 </html>
 """
 
     with open(args.output, 'w') as f:
-        f.write(html)
+        f.write(html_content)
 
 
 if __name__ == '__main__':

@@ -23,6 +23,7 @@ def main():
     parser.add_argument('--pvalue-cutoff', type=float, default=0.05, help='P-value cutoff (not used currently)')
     parser.add_argument('--output-bed', required=True, help='Output BED file')
     parser.add_argument('--output-tsv', required=True, help='Output TSV file for igv-reports')
+    parser.add_argument('--igv-top-n', type=int, default=100, help='Top N regions for IGV report')
     args = parser.parse_args()
 
     # Handle empty files
@@ -104,7 +105,7 @@ def main():
     tsv_df['DIFF_DELTA'] = sig_regions['diff_delta'].round(4).values
     
     # Limit to top 100 for igv-reports
-    tsv_df = tsv_df.head(100)
+    tsv_df = tsv_df.head(args.igv_top_n)
     tsv_df.to_csv(args.output_tsv, sep='\t', index=False, header=True)
     print(f"Saved top {len(tsv_df)} regions to TSV file: {args.output_tsv}")
 

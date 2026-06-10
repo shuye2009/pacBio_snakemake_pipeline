@@ -38,59 +38,59 @@ rule Index_gtf:
         """
 
 
+# =============================================================================
+# Plot_methylation_heatmap: Generate heatmap of methylation across samples
+#
+# Creates a heatmap showing methylation levels at significant regions from
+# cohort_comparison.tsv, filtered by min_delta and adjusted p-value thresholds.
+# =============================================================================
+rule Plot_methylation_heatmap_region:
+    input:
+        cohort_comparison=METHBAT_DIR + "/region_cohort_comparison.tsv",
+        profiles=expand(METHBAT_DIR + "/profiles_region/{sample}.region.profile.tsv", sample=ALL_SAMPLES),
+    output:
+        heatmap=VIS_DIR + "/methylation_heatmap.png",
+        heatmap_pdf=VIS_DIR + "/methylation_heatmap.pdf",
+        stats_tsv=VIS_DIR + "/region_cohort_comparison_with_pvalues.tsv",
+        sig_bed=VIS_DIR + "/significant_regions.bed",
+        sig_tsv=VIS_DIR + "/significant_regions.tsv",
+        zscore_dist_png=VIS_DIR + "/zscore_distribution_regions.png",
+        zscore_dist_pdf=VIS_DIR + "/zscore_distribution_regions.pdf",
+    params:
+        case_samples=",".join(config["samples"]["case"]),
+        control_samples=",".join(config["samples"]["control"]),
+        profile_dir=METHBAT_DIR + "/profiles_region",
+        min_delta=config["methbat"]["min_delta"],
+        pvalue_cutoff=config["methbat"]["pvalue_cutoff"],
+        script=os.path.join(SCRIPTS_DIR, "plot_methylation_heatmap.py"),
+    log:
+        config["directory"]["output"] + "/logs/visualization/heatmap.log",
+    shell:
+        """
+        mkdir -p $(dirname {output.heatmap})
+        mkdir -p $(dirname {log})
+        
+        /cluster/home/t128737uhn/miniconda3/bin/python {params.script} \
+            --cohort-comparison {input.cohort_comparison} \
+            --profile-dir {params.profile_dir} \
+            --case-samples {params.case_samples} \
+            --control-samples {params.control_samples} \
+            --min-delta {params.min_delta} \
+            --pvalue-cutoff {params.pvalue_cutoff} \
+            --output-png {output.heatmap} \
+            --output-pdf {output.heatmap_pdf} \
+            --output-tsv {output.stats_tsv} \
+            --output-bed {output.sig_bed} \
+            --output-igv-tsv {output.sig_tsv} \
+            --output-zscore-dist-png {output.zscore_dist_png} \
+            --output-zscore-dist-pdf {output.zscore_dist_pdf} \
+            2>&1 | tee {log}
+        """
+
+
 if ENOUGH_SAMPLES:
 
     # =========================================================================
-    # Plot_methylation_heatmap: Generate heatmap of methylation across samples
-    #
-    # Creates a heatmap showing methylation levels at significant regions from
-    # cohort_comparison.tsv, filtered by min_delta and adjusted p-value thresholds.
-    # =============================================================================
-    rule Plot_methylation_heatmap_region:
-        input:
-            cohort_comparison=METHBAT_DIR + "/region_cohort_comparison.tsv",
-            profiles=expand(METHBAT_DIR + "/profiles_region/{sample}.region.profile.tsv", sample=ALL_SAMPLES),
-        output:
-            heatmap=VIS_DIR + "/methylation_heatmap.png",
-            heatmap_pdf=VIS_DIR + "/methylation_heatmap.pdf",
-            stats_tsv=VIS_DIR + "/region_cohort_comparison_with_pvalues.tsv",
-            sig_bed=VIS_DIR + "/significant_regions.bed",
-            sig_tsv=VIS_DIR + "/significant_regions.tsv",
-            zscore_dist_png=VIS_DIR + "/zscore_distribution_regions.png",
-            zscore_dist_pdf=VIS_DIR + "/zscore_distribution_regions.pdf",
-        params:
-            case_samples=",".join(config["samples"]["case"]),
-            control_samples=",".join(config["samples"]["control"]),
-            profile_dir=METHBAT_DIR + "/profiles_region",
-            min_delta=config["methbat"]["min_delta"],
-            pvalue_cutoff=config["methbat"]["pvalue_cutoff"],
-            script=os.path.join(SCRIPTS_DIR, "plot_methylation_heatmap.py"),
-        log:
-            config["directory"]["output"] + "/logs/visualization/heatmap.log",
-        shell:
-            """
-            mkdir -p $(dirname {output.heatmap})
-            mkdir -p $(dirname {log})
-            
-            /cluster/home/t128737uhn/miniconda3/bin/python {params.script} \
-                --cohort-comparison {input.cohort_comparison} \
-                --profile-dir {params.profile_dir} \
-                --case-samples {params.case_samples} \
-                --control-samples {params.control_samples} \
-                --min-delta {params.min_delta} \
-                --pvalue-cutoff {params.pvalue_cutoff} \
-                --output-png {output.heatmap} \
-                --output-pdf {output.heatmap_pdf} \
-                --output-tsv {output.stats_tsv} \
-                --output-bed {output.sig_bed} \
-                --output-igv-tsv {output.sig_tsv} \
-                --output-zscore-dist-png {output.zscore_dist_png} \
-                --output-zscore-dist-pdf {output.zscore_dist_pdf} \
-                2>&1 | tee {log}
-            """
-
-
-# =========================================================================
     # Plot_dmr_volcano: Volcano plot of differentially methylated regions
     #
     # Shows the relationship between methylation difference (delta) and
@@ -177,7 +177,7 @@ if ENOUGH_SAMPLES:
 # =============================================================================
 rule Plot_dss_dmr_heatmap:
     input:
-        dmr_bed=DSS_BASE + "/dmr_results.bed",
+        dmr_bed=DSS_BASE + f"/dmr_results.top{TOP_N}.bed",
         beds=expand(config["directory"]["output"] + "/pb_cpg_tools/{sample}.combined.bed.gz", sample=ALL_SAMPLES),
     output:
         heatmap=VIS_BASE + "/dss_dmr_heatmap.png",
@@ -239,67 +239,100 @@ rule Plot_sample_pca_region:
         """
 
 
+# =============================================================================
+# IGV_reports: Generate interactive IGV HTML reports for significant regions
+#
+# Creates browsable HTML reports with IGV.js for visualizing significant
+# regions and DMRs with haplotagged BAM tracks.
+# Uses haplotagged BAMs when phasing is enabled, aligned BAMs otherwise.
+# =============================================================================
+rule IGV_reports_regions:
+    input:
+        tsv=VIS_DIR + "/significant_regions.tsv",
+        bed=VIS_DIR + "/significant_regions.bed",
+        fasta=config["genome"]["fasta"],
+        gtf=config["directory"]["output"] + "/visualization/genes.sorted.gtf.gz",
+        gtf_index=config["directory"]["output"] + "/visualization/genes.sorted.gtf.gz.tbi",
+        bams=expand(
+            config["directory"]["output"] + ("/phased/{sample}.haplotagged.bam" if PHASING_ENABLED else "/aligned/{sample}.aligned.bam"),
+            sample=ALL_SAMPLES
+        ),
+        bais=expand(
+            config["directory"]["output"] + ("/phased/{sample}.haplotagged.bam.bai" if PHASING_ENABLED else "/aligned/{sample}.aligned.bam.bai"),
+            sample=ALL_SAMPLES
+        ),
+    output:
+        report=VIS_DIR + "/igv_significant_regions.html",
+        track_config=VIS_DIR + "/igv_regions_track_config.json",
+    params:
+        bam_args=lambda wildcards, input: " ".join(input.bams),
+        script=os.path.join(SCRIPTS_DIR, "generate_igv_track_config.py"),
+        phasing_flag="--phasing-enabled" if PHASING_ENABLED else "",
+    log:
+        config["directory"]["output"] + "/logs/visualization/igv_regions.log",
+    shell:
+        """
+        mkdir -p $(dirname {output.report})
+        mkdir -p $(dirname {log})
+        
+        # Generate track config for BAM files with haplotype grouping and methylation coloring
+        /cluster/home/t128737uhn/miniconda3/bin/python {params.script} \
+            --bams {params.bam_args} \
+            --output {output.track_config} \
+            --gtf {input.gtf} --gtf-index {input.gtf_index} \
+            {params.phasing_flag}
+        
+        module load igv-reports
+        
+        create_report {input.tsv} \
+            --fasta {input.fasta} \
+            --sequence 1 --begin 2 --end 3 \
+            --info-columns NAME DELTA ADJ_PVALUE \
+            --tracks {input.bed} \
+            --track-config {output.track_config} \
+            --output {output.report} \
+            2>&1 | tee {log}
+        """
+
+
 if ENOUGH_SAMPLES:
 
     # =========================================================================
-    # IGV_reports: Generate interactive IGV HTML reports for significant regions
+    # Filter_dmrs_for_igv: Filter significant DMRs to top N by adjusted p-value
     #
-    # Creates browsable HTML reports with IGV.js for visualizing significant
-    # regions and DMRs with haplotagged BAM tracks.
-    # Uses haplotagged BAMs when phasing is enabled, aligned BAMs otherwise.
+    # Reduces the number of DMRs for IGV reporting to keep reports manageable.
     # =========================================================================
-    rule IGV_reports_regions:
+    rule Filter_dmrs_for_igv:
         input:
-            tsv=VIS_DIR + "/significant_regions.tsv",
-            bed=VIS_DIR + "/significant_regions.bed",
-            fasta=config["genome"]["fasta"],
-            gtf=config["directory"]["output"] + "/visualization/genes.sorted.gtf.gz",
-            gtf_index=config["directory"]["output"] + "/visualization/genes.sorted.gtf.gz.tbi",
-            bams=expand(
-                config["directory"]["output"] + ("/phased/{sample}.haplotagged.bam" if PHASING_ENABLED else "/aligned/{sample}.aligned.bam"),
-                sample=ALL_SAMPLES
-            ),
-            bais=expand(
-                config["directory"]["output"] + ("/phased/{sample}.haplotagged.bam.bai" if PHASING_ENABLED else "/aligned/{sample}.aligned.bam.bai"),
-                sample=ALL_SAMPLES
-            ),
+            tsv=VIS_BASE + "/significant_dmrs.tsv",
+            bed=VIS_BASE + "/significant_dmrs.bed",
         output:
-            report=VIS_DIR + "/igv_significant_regions.html",
-            track_config=VIS_DIR + "/igv_regions_track_config.json",
+            tsv=VIS_BASE + f"/significant_dmrs.top{TOP_N}.tsv",
+            bed=VIS_BASE + f"/significant_dmrs.top{TOP_N}.bed",
         params:
-            bam_args=lambda wildcards, input: " ".join(input.bams),
-            script=os.path.join(SCRIPTS_DIR, "generate_igv_track_config.py"),
-            phasing_flag="--phasing-enabled" if PHASING_ENABLED else "",
+            script=os.path.join(SCRIPTS_DIR, "filter_dmrs_for_igv.py"),
+            top_n=TOP_N,
         log:
-            config["directory"]["output"] + "/logs/visualization/igv_regions.log",
+            config["directory"]["output"] + "/logs/visualization/filter_dmrs_for_igv.log",
         shell:
             """
-            mkdir -p $(dirname {output.report})
+            mkdir -p $(dirname {output.tsv})
             mkdir -p $(dirname {log})
-            
-            # Generate track config for BAM files with haplotype grouping and methylation coloring
+
             /cluster/home/t128737uhn/miniconda3/bin/python {params.script} \
-                --bams {params.bam_args} \
-                --output {output.track_config} \
-                {params.phasing_flag}
-            
-            module load igv-reports
-            
-            create_report {input.tsv} \
-                --fasta {input.fasta} \
-                --sequence 1 --begin 2 --end 3 \
-                --info-columns NAME DELTA ADJ_PVALUE \
-                --tracks {input.bed} {input.gtf} \
-                --track-config {output.track_config} \
-                --output {output.report} \
+                --input-tsv {input.tsv} \
+                --input-bed {input.bed} \
+                --top-n {params.top_n} \
+                --output-tsv {output.tsv} \
+                --output-bed {output.bed} \
                 2>&1 | tee {log}
             """
 
 
     rule IGV_reports_dmrs:
         input:
-            tsv=VIS_BASE + "/significant_dmrs.tsv",
-            bed=VIS_BASE + "/significant_dmrs.bed",
+            tsv=VIS_BASE + f"/significant_dmrs.top{TOP_N}.tsv",
+            bed=VIS_BASE + f"/significant_dmrs.top{TOP_N}.bed",
             fasta=config["genome"]["fasta"],
             gtf=config["directory"]["output"] + "/visualization/genes.sorted.gtf.gz",
             gtf_index=config["directory"]["output"] + "/visualization/genes.sorted.gtf.gz.tbi",
@@ -329,6 +362,7 @@ if ENOUGH_SAMPLES:
             /cluster/home/t128737uhn/miniconda3/bin/python {params.script} \
                 --bams {params.bam_args} \
                 --output {output.track_config} \
+                --gtf {input.gtf} --gtf-index {input.gtf_index} \
                 {params.phasing_flag}
             
             module load igv-reports
@@ -337,11 +371,54 @@ if ENOUGH_SAMPLES:
                 --fasta {input.fasta} \
                 --sequence 1 --begin 2 --end 3 \
                 --info-columns NAME DELTA ADJ_PVALUE \
-                --tracks {input.bed} {input.gtf} \
+                --tracks {input.bed} \
                 --track-config {output.track_config} \
                 --output {output.report} \
                 2>&1 | tee {log}
             """
+
+
+# =============================================================================
+# Filter_dss_dmrs_for_igv: Filter DSS DMRs to top N by abs(methylation diff)
+#
+# Produces two filtered sets: TOP_N for motif enrichment/annotation,
+# IGV_TOP_N for IGV browser reports.
+# =============================================================================
+rule Filter_dss_dmrs_for_igv:
+    input:
+        tsv=DSS_BASE + "/dmr_results.tsv",
+        bed=DSS_BASE + "/dmr_results.bed",
+    output:
+        tsv=DSS_BASE + f"/dmr_results.top{TOP_N}.tsv",
+        bed=DSS_BASE + f"/dmr_results.top{TOP_N}.bed",
+        tsv_igv=DSS_BASE + f"/dmr_results.top{IGV_TOP_N}.tsv",
+        bed_igv=DSS_BASE + f"/dmr_results.top{IGV_TOP_N}.bed",
+    params:
+        script=os.path.join(SCRIPTS_DIR, "filter_dss_dmrs_for_igv.py"),
+        top_n=TOP_N,
+        igv_top_n=IGV_TOP_N,
+    log:
+        config["directory"]["output"] + "/logs/visualization/filter_dss_dmrs_for_igv.log",
+    shell:
+        """
+        mkdir -p $(dirname {output.tsv})
+        mkdir -p $(dirname {log})
+
+        /cluster/home/t128737uhn/miniconda3/bin/python {params.script} \
+            --input-tsv {input.tsv} \
+            --input-bed {input.bed} \
+            --top-n {params.top_n} \
+            --output-tsv {output.tsv} \
+            --output-bed {output.bed}
+
+        /cluster/home/t128737uhn/miniconda3/bin/python {params.script} \
+            --input-tsv {input.tsv} \
+            --input-bed {input.bed} \
+            --top-n {params.igv_top_n} \
+            --output-tsv {output.tsv_igv} \
+            --output-bed {output.bed_igv} \
+            2>&1 | tee {log}
+        """
 
 
 # =============================================================================
@@ -353,8 +430,8 @@ if ENOUGH_SAMPLES:
 # =============================================================================
 rule IGV_reports_dss_dmrs:
     input:
-        tsv=DSS_BASE + "/dmr_results.tsv",
-        bed=DSS_BASE + "/dmr_results.bed",
+        tsv=DSS_BASE + f"/dmr_results.top{IGV_TOP_N}.tsv",
+        bed=DSS_BASE + f"/dmr_results.top{IGV_TOP_N}.bed",
         fasta=config["genome"]["fasta"],
         gtf=config["directory"]["output"] + "/visualization/genes.sorted.gtf.gz",
         gtf_index=config["directory"]["output"] + "/visualization/genes.sorted.gtf.gz.tbi",
@@ -380,10 +457,15 @@ rule IGV_reports_dss_dmrs:
         mkdir -p $(dirname {output.report})
         mkdir -p $(dirname {log})
 
+        # Fix scientific notation in BED coordinates for igv-reports compatibility
+        bed_fixed=$(dirname {output.report})/dmr_results_fixed.bed
+        awk 'BEGIN{{OFS="\t"}} {{if(NF>=3){{$2=sprintf("%.0f",$2);$3=sprintf("%.0f",$3)}};print}}' {input.bed} > "$bed_fixed"
+
         # Generate track config for BAM files with haplotype grouping and methylation coloring
         /cluster/home/t128737uhn/miniconda3/bin/python {params.script} \
             --bams {params.bam_args} \
             --output {output.track_config} \
+            --gtf {input.gtf} --gtf-index {input.gtf_index} \
             {params.phasing_flag}
 
         module load igv-reports
@@ -392,10 +474,12 @@ rule IGV_reports_dss_dmrs:
             --fasta {input.fasta} \
             --sequence 1 --begin 2 --end 3 \
             --info-columns areaStat diff.Methy nCG length \
-            --tracks {input.bed} {input.gtf} \
+            --tracks "$bed_fixed" \
             --track-config {output.track_config} \
             --output {output.report} \
             2>&1 | tee {log}
+
+        rm -f "$bed_fixed"
         """
 
 
@@ -403,17 +487,20 @@ rule IGV_reports_dss_dmrs:
 # Filter_dml_for_igv: Extract top N most significant DMLs for IGV reporting
 #
 # Full DML results can contain hundreds of thousands of loci, which
-# overwhelms igv-reports. This filters to the top 5000 by p-value.
+# overwhelms igv-reports. Produces two filtered sets: TOP_N and IGV_TOP_N.
 # =============================================================================
 rule Filter_dml_for_igv:
     input:
         tsv=DSS_BASE + "/dml_results.tsv",
     output:
-        tsv=DSS_BASE + "/dml_results.top500.tsv",
-        bed=DSS_BASE + "/dml_results.top500.bed",
+        tsv=DSS_BASE + f"/dml_results.top{TOP_N}.tsv",
+        bed=DSS_BASE + f"/dml_results.top{TOP_N}.bed",
+        tsv_igv=DSS_BASE + f"/dml_results.top{IGV_TOP_N}.tsv",
+        bed_igv=DSS_BASE + f"/dml_results.top{IGV_TOP_N}.bed",
     params:
         script=os.path.join(SCRIPTS_DIR, "filter_dml_for_igv.py"),
-        top_n=500,
+        top_n=TOP_N,
+        igv_top_n=IGV_TOP_N,
     log:
         config["directory"]["output"] + "/logs/visualization/filter_dml_for_igv.log",
     shell:
@@ -425,7 +512,13 @@ rule Filter_dml_for_igv:
             --dml-tsv {input.tsv} \
             --top-n {params.top_n} \
             --output-tsv {output.tsv} \
-            --output-bed {output.bed} \
+            --output-bed {output.bed}
+
+        /cluster/home/t128737uhn/miniconda3/bin/python {params.script} \
+            --dml-tsv {input.tsv} \
+            --top-n {params.igv_top_n} \
+            --output-tsv {output.tsv_igv} \
+            --output-bed {output.bed_igv} \
             2>&1 | tee {log}
         """
 
@@ -439,8 +532,8 @@ rule Filter_dml_for_igv:
 # =============================================================================
 rule IGV_reports_dss_dmls:
     input:
-        tsv=DSS_BASE + "/dml_results.top500.tsv",
-        bed=DSS_BASE + "/dml_results.top500.bed",
+        tsv=DSS_BASE + f"/dml_results.top{IGV_TOP_N}.tsv",
+        bed=DSS_BASE + f"/dml_results.top{IGV_TOP_N}.bed",
         fasta=config["genome"]["fasta"],
         gtf=config["directory"]["output"] + "/visualization/genes.sorted.gtf.gz",
         gtf_index=config["directory"]["output"] + "/visualization/genes.sorted.gtf.gz.tbi",
@@ -466,10 +559,15 @@ rule IGV_reports_dss_dmls:
         mkdir -p $(dirname {output.report})
         mkdir -p $(dirname {log})
 
+        # Fix scientific notation in BED coordinates for igv-reports compatibility
+        bed_fixed=$(dirname {output.report})/dml_results_fixed.bed
+        awk 'BEGIN{{OFS="\t"}} {{if(NF>=3){{$2=sprintf("%.0f",$2);$3=sprintf("%.0f",$3)}};print}}' {input.bed} > "$bed_fixed"
+
         # Generate track config for BAM files with haplotype grouping and methylation coloring
         /cluster/home/t128737uhn/miniconda3/bin/python {params.script} \
             --bams {params.bam_args} \
             --output {output.track_config} \
+            --gtf {input.gtf} --gtf-index {input.gtf_index} \
             {params.phasing_flag}
 
         module load igv-reports
@@ -478,10 +576,12 @@ rule IGV_reports_dss_dmls:
             --fasta {input.fasta} \
             --sequence 1 --begin 2 --end 2 \
             --info-columns mu1 mu2 diff pval fdr \
-            --tracks {input.bed} {input.gtf} \
+            --tracks "$bed_fixed" \
             --track-config {output.track_config} \
             --output {output.report} \
             2>&1 | tee {log}
+
+        rm -f "$bed_fixed"
         """
 
 
@@ -500,6 +600,7 @@ if PHASING_ENABLED:
             tsv=VIS_BASE + "/significant_asm.tsv",
         params:
             min_delta=config["methbat"]["min_delta"],
+            igv_top_n=IGV_TOP_N,
             script=os.path.join(SCRIPTS_DIR, "extract_significant_asm.py"),
         log:
             config["directory"]["output"] + "/logs/visualization/extract_significant_asm.log",
@@ -511,6 +612,7 @@ if PHASING_ENABLED:
             /cluster/home/t128737uhn/miniconda3/bin/python {params.script} \
                 --asm-comparison {input.asm_comparison} \
                 --min-delta {params.min_delta} \
+                --igv-top-n {params.igv_top_n} \
                 --output-bed {output.bed} \
                 --output-tsv {output.tsv} \
                 2>&1 | tee {log}
@@ -548,7 +650,8 @@ if PHASING_ENABLED:
             # Generate track config for BAM files with haplotype grouping and methylation coloring
             /cluster/home/t128737uhn/miniconda3/bin/python {params.script} \
                 --bams {params.bam_args} \
-                --output {output.track_config}
+                --output {output.track_config} \
+                --gtf {input.gtf} --gtf-index {input.gtf_index}
             
             module load igv-reports
             
@@ -556,7 +659,7 @@ if PHASING_ENABLED:
                 --fasta {input.fasta} \
                 --sequence 1 --begin 2 --end 3 \
                 --info-columns NAME AVG_DELTA AVG_METHYL \
-                --tracks {input.bed} {input.gtf} \
+                --tracks {input.bed} \
                 --track-config {output.track_config} \
                 --output {output.report} \
                 2>&1 | tee {log}
@@ -578,6 +681,7 @@ if PHASING_ENABLED:
         params:
             min_delta=config["methbat"]["min_delta"],
             pvalue_cutoff=config["methbat"].get("pvalue_cutoff", 0.05),
+            igv_top_n=IGV_TOP_N,
             script=os.path.join(SCRIPTS_DIR, "extract_differential_asm.py"),
         log:
             config["directory"]["output"] + "/logs/visualization/extract_differential_asm.log",
@@ -590,6 +694,7 @@ if PHASING_ENABLED:
                 --asm-comparison {input.asm_comparison} \
                 --min-delta {params.min_delta} \
                 --pvalue-cutoff {params.pvalue_cutoff} \
+                --igv-top-n {params.igv_top_n} \
                 --output-bed {output.bed} \
                 --output-tsv {output.tsv} \
                 2>&1 | tee {log}
@@ -627,7 +732,8 @@ if PHASING_ENABLED:
             # Generate track config for BAM files with haplotype grouping and methylation coloring
             /cluster/home/t128737uhn/miniconda3/bin/python {params.script} \
                 --bams {params.bam_args} \
-                --output {output.track_config}
+                --output {output.track_config} \
+                --gtf {input.gtf} --gtf-index {input.gtf_index}
             
             module load igv-reports
             
@@ -635,7 +741,7 @@ if PHASING_ENABLED:
                 --fasta {input.fasta} \
                 --sequence 1 --begin 2 --end 3 \
                 --info-columns NAME CASE_DELTA CONTROL_DELTA DIFF_DELTA \
-                --tracks {input.bed} {input.gtf} \
+                --tracks {input.bed} \
                 --track-config {output.track_config} \
                 --output {output.report} \
                 2>&1 | tee {log}
@@ -699,9 +805,11 @@ rule Generate_report:
             "--output", output.report,
         ]
 
+        cmd.extend([
+            "--heatmap", VIS_DIR + "/methylation_heatmap.png",
+        ])
         if ENOUGH_SAMPLES:
             cmd.extend([
-                "--heatmap", VIS_DIR + "/methylation_heatmap.png",
                 "--dmr-heatmap", VIS_BASE + "/significant_dmr_heatmap.png",
                 "--volcano", VIS_BASE + "/dmr_volcano.png",
                 "--signature-stats", METHBAT_BASE + "/signature.signature_stats.tsv",

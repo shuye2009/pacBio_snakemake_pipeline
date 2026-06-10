@@ -65,10 +65,16 @@ if(0){
 # 1. Load DMRs with delta values from TSV
 # =========================================================================
 cat("Loading DMRs:", dmr_bed, "\n")
-dmr_raw <- import(dmr_bed, format = "bed")
+dmr_bed_df <- read.table(dmr_bed, header = FALSE, sep = "\t", stringsAsFactors = FALSE, colClasses = "character")
+dmr_bed_df[, 2] <- as.numeric(dmr_bed_df[, 2])
+dmr_bed_df[, 3] <- as.numeric(dmr_bed_df[, 3])
+colnames(dmr_bed_df)[1:6] <- c("chr", "start", "end", "name", "score", "strand")
+dmr_raw <- makeGRangesFromDataFrame(dmr_bed_df, seqnames.field = "chr", start.field = "start", end.field = "end", keep.extra.columns = TRUE)
 
 cat("Loading DMR delta values from:", dmr_tsv, "\n")
-dmr_tsv_df <- read.table(dmr_tsv, header = TRUE, sep = "\t", stringsAsFactors = FALSE)
+dmr_tsv_df <- read.table(dmr_tsv, header = TRUE, sep = "\t", stringsAsFactors = FALSE, colClasses = "character")
+dmr_tsv_df$START <- as.numeric(dmr_tsv_df$START)
+dmr_tsv_df$END <- as.numeric(dmr_tsv_df$END)
 dmr_tsv_gr <- makeGRangesFromDataFrame(dmr_tsv_df,
   seqnames.field = "CHROM", start.field = "START", end.field = "END", keep.extra.columns = TRUE)
 hits <- findOverlaps(dmr_raw, dmr_tsv_gr)

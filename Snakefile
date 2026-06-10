@@ -7,6 +7,8 @@ configfile: "config/config.yaml"
 ALL_SAMPLES = config["samples"]["case"] + config["samples"]["control"]
 PHASING_ENABLED = config.get("phasing", {}).get("enabled", False)
 ENOUGH_SAMPLES = len(ALL_SAMPLES) >= 3
+TOP_N = config.get("top_n", 500)
+IGV_TOP_N = config.get("igv_top_n", 100)
 
 # Dynamically set methbat regions from target (e.g., enhancer, cgi, centromere, repeat)
 TARGET = config.get("target", "enhancer")
@@ -43,6 +45,7 @@ def get_all_outputs():
         VIS_BASE + "/igv_dss_dmrs.html",
         VIS_BASE + "/igv_dss_dmls.html",
         FUNC_BASE + "/dss_dmr_annotations.tsv",
+        FUNC_BASE + f"/dss_dmr_results.top{TOP_N}.converted.tsv",
         FUNC_BASE + "/dss_dmr_annotation_distribution.png",
         FUNC_BASE + "/dss_dmr_annotation_distribution.pdf",
         FUNC_BASE + "/dss_dmr_gene_associations.tsv",
@@ -62,15 +65,16 @@ def get_all_outputs():
         DSS_BASE + "/dml_results.bed",
         DSS_BASE + "/dmr_results.tsv",
         DSS_BASE + "/dmr_results.bed",
+        DSS_BASE + "/" + TARGET + "_comparison.tsv",
         VIS_BASE + "/dss_dmr_heatmap.png",
         VIS_BASE + "/dss_dmr_heatmap.pdf",
+        METHBAT_DIR + "/region_cohort_comparison.tsv",
+        VIS_DIR + "/igv_significant_regions.html",
     ]
     if ENOUGH_SAMPLES:
         outputs.extend([
             METHBAT_BASE + "/signature.signature_regions.bed",
             METHBAT_BASE + "/signature.signature_stats.tsv",
-            METHBAT_DIR + "/region_cohort_comparison.tsv",
-            VIS_DIR + "/igv_significant_regions.html",
             VIS_BASE + "/igv_significant_dmrs.html",
             FUNC_BASE + "/dmr_annotations.tsv",
             FUNC_BASE + "/dmr_annotation_distribution.png",

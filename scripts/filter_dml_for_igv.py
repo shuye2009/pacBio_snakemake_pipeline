@@ -33,11 +33,11 @@ def main():
 
     dml = dml.sort_values('pval', ascending=True).head(args.top_n)
 
-    dml.to_csv(args.output_tsv, sep='\t', index=False)
+    dml.to_csv(args.output_tsv, sep='\t', index=False, float_format='%.6g')
 
     bed = dml[['chr', 'pos']].copy()
-    bed['start'] = bed['pos'] - 1
-    bed['end'] = bed['pos']
+    bed['start'] = (bed['pos'] - 1).astype(int)
+    bed['end'] = bed['pos'].astype(int)
     bed['name'] = bed['chr'] + ':' + bed['pos'].astype(str)
     bed['score'] = np.clip((-np.log10(dml['pval'].values) * 100).astype(int), 0, 1000)
     bed['strand'] = '.'

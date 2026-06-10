@@ -130,37 +130,35 @@ rule Methbat_region_build:
         """
 
 
-if ENOUGH_SAMPLES:
-
-    # =========================================================================
-    # Methbat_compare: Compare methylation between case and control cohorts
-    # 
-    # Performs statistical comparison of methylation levels at each region
-    # between case and control groups. Outputs comparison statistics.
-    # =========================================================================
-    rule Methbat_region_compare:
-        input:
-            cohort_profile=METHBAT_DIR + "/region_cohort.profile.tsv",
-        output:
-            comparison=METHBAT_DIR + "/region_cohort_comparison.tsv",
-        log:
-            config["directory"]["output"] + "/logs/methbat/compare.log",
-        shell:
-            """
-            set +u
-            source /cluster/home/t128737uhn/miniconda3/etc/profile.d/conda.sh
-            conda activate methbat
-            set -u
-            mkdir -p $(dirname {output.comparison})
-            mkdir -p $(dirname {log})
-            methbat compare \
-                --input-profile {input.cohort_profile} \
-                --output-comparison {output.comparison} \
-                --baseline-category control \
-                --compare-category case \
-                2>&1 | tee {log}
-            conda deactivate
-            """
+# =============================================================================
+# Methbat_compare: Compare methylation between case and control cohorts
+# 
+# Performs statistical comparison of methylation levels at each region
+# between case and control groups. Outputs comparison statistics.
+# =========================================================================
+rule Methbat_region_compare:
+    input:
+        cohort_profile=METHBAT_DIR + "/region_cohort.profile.tsv",
+    output:
+        comparison=METHBAT_DIR + "/region_cohort_comparison.tsv",
+    log:
+        config["directory"]["output"] + "/logs/methbat/compare.log",
+    shell:
+        """
+        set +u
+        source /cluster/home/t128737uhn/miniconda3/etc/profile.d/conda.sh
+        conda activate methbat
+        set -u
+        mkdir -p $(dirname {output.comparison})
+        mkdir -p $(dirname {log})
+        methbat compare \
+            --input-profile {input.cohort_profile} \
+            --output-comparison {output.comparison} \
+            --baseline-category control \
+            --compare-category case \
+            2>&1 | tee {log}
+        conda deactivate
+        """
 
 
 # =============================================================================
@@ -441,36 +439,36 @@ if config.get("phasing", {}).get("enabled", False):
             """
 
 
-    if ENOUGH_SAMPLES:
+    
 
-        # =====================================================================
-        # Methbat_region_compare_haplotype: Compare methylation per haplotype
-        # =====================================================================
-        rule Methbat_region_compare_haplotype:
-            input:
-                cohort_profile=METHBAT_DIR + "/region_cohort_{haplotype}.profile.tsv",
-            output:
-                comparison=METHBAT_DIR + "/region_cohort_comparison_{haplotype}.tsv",
-            wildcard_constraints:
-                haplotype="hap1|hap2"
-            log:
-                config["directory"]["output"] + "/logs/methbat/compare_{haplotype}.log",
-            shell:
-                """
-                set +u
-                source /cluster/home/t128737uhn/miniconda3/etc/profile.d/conda.sh
-                conda activate methbat
-                set -u
-                mkdir -p $(dirname {output.comparison})
-                mkdir -p $(dirname {log})
-                methbat compare \
-                    --input-profile {input.cohort_profile} \
-                    --output-comparison {output.comparison} \
-                    --baseline-category control \
-                    --compare-category case \
-                    2>&1 | tee {log}
-                conda deactivate
-                """
+    # =====================================================================
+    # Methbat_region_compare_haplotype: Compare methylation per haplotype
+    # =====================================================================
+    rule Methbat_region_compare_haplotype:
+        input:
+            cohort_profile=METHBAT_DIR + "/region_cohort_{haplotype}.profile.tsv",
+        output:
+            comparison=METHBAT_DIR + "/region_cohort_comparison_{haplotype}.tsv",
+        wildcard_constraints:
+            haplotype="hap1|hap2"
+        log:
+            config["directory"]["output"] + "/logs/methbat/compare_{haplotype}.log",
+        shell:
+            """
+            set +u
+            source /cluster/home/t128737uhn/miniconda3/etc/profile.d/conda.sh
+            conda activate methbat
+            set -u
+            mkdir -p $(dirname {output.comparison})
+            mkdir -p $(dirname {log})
+            methbat compare \
+                --input-profile {input.cohort_profile} \
+                --output-comparison {output.comparison} \
+                --baseline-category control \
+                --compare-category case \
+                2>&1 | tee {log}
+            conda deactivate
+            """
 
 
     # =========================================================================

@@ -15,6 +15,8 @@ genome:
   jaspar_db: "/cluster/home/t128737uhn/.cache/R/BiocFileCache/1e2926a17d297_JASPAR2024.sqlite"
 
 target: "enhancer"
+top_n: 500         # Top N DMRs/DMLs for heatmap, annotation, and motif enrichment
+igv_top_n: 100     # Top N DMRs/DMLs for IGV reports (browser display limit)
 
 global:
   bin_size: 500000  # Bin size in bp for global methylation analysis
@@ -54,10 +56,10 @@ methbat:
 
 dss:
   threads: 16
-  delta: 0.1          # Minimum methylation difference for DML/DMR
+  delta: 0.2          # Minimum methylation difference for DML/DMR
   pvalue: 1e-5        # P-value threshold for calling DMLs/DMRs
   fdr: 0.05           # FDR cutoff for DMR calling
-  min_cpg: 3          # Minimum CpG sites per DMR
+  min_cpg: 5          # Minimum CpG sites per DMR
   min_length: 50      # Minimum DMR length in bp
   merge_dist: 100     # Max distance to merge adjacent DMRs
   smoothing: true     # Enable spatial smoothing in DMLtest

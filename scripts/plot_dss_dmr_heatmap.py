@@ -31,14 +31,16 @@ def load_dmr_regions_from_bed(bed_file):
             if len(fields) < 3:
                 continue
             chrom = fields[0]
-            start = int(fields[1])
-            end = int(fields[2])
+            start = int(float(fields[1]))
+            end = int(float(fields[2]))
+            score = float(fields[4]) if len(fields) > 4 and fields[4] else 0
             name = f"{chrom}:{start}-{end}"
             regions.append({
                 'chrom': chrom,
                 'start': start,
                 'end': end,
-                'name': name
+                'name': name,
+                'score': score
             })
     print(f"Loaded {len(regions)} DSS DMR regions from BED file")
     return regions
@@ -91,6 +93,12 @@ def main():
     control_samples = args.control_samples.split(",")
 
     regions = load_dmr_regions_from_bed(args.dmr_bed)
+
+    MAX_DMRS = 2000
+    if len(regions) > MAX_DMRS:
+        regions.sort(key=lambda r: r.get('score', 0), reverse=True)
+        regions = regions[:MAX_DMRS]
+        print(f"Capped to top {MAX_DMRS} DMRs by BED score for heatmap")
 
     if len(regions) == 0:
         fig, ax = plt.subplots(figsize=(10, 8))
