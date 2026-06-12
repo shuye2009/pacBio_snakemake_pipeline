@@ -31,6 +31,8 @@ def main():
     parser.add_argument('--output-igv-tsv', required=True, help='Output TSV file with significant regions for igv-reports')
     parser.add_argument('--output-zscore-dist-png', required=False, help='Output PNG for z-score distribution')
     parser.add_argument('--output-zscore-dist-pdf', required=False, help='Output PDF for z-score distribution')
+    parser.add_argument('--top-n', type=int, default=500, help='Top N regions for heatmap')
+    parser.add_argument('--igv-top-n', type=int, default=100, help='Top N regions for IGV TSV')
     args = parser.parse_args()
 
     case_samples = args.case_samples.split(",")
@@ -183,9 +185,14 @@ def main():
         comparison['pvalue'] = np.nan
         comparison['adj_pvalue'] = np.nan
 
-    # Filter for significant regions using p-value cutoff
+    # Filter for significant regions using p-value cutoff (fall back to delta-only if no valid p-values)
     if delta_col and 'adj_pvalue' in comparison.columns:
-        comparison['significant'] = (abs(comparison[delta_col]) >= args.min_delta) & (comparison['adj_pvalue'] <= args.pvalue_cutoff)
+        has_valid_pvalues = comparison['adj_pvalue'].notna().any()
+        if has_valid_pvalues:
+            comparison['significant'] = (abs(comparison[delta_col]) >= args.min_delta) & (comparison['adj_pvalue'] <= args.pvalue_cutoff)
+        else:
+            print("Warning: No valid p-values, falling back to delta-only significance")
+            comparison['significant'] = abs(comparison[delta_col]) >= args.min_delta
         sig_regions = comparison[comparison['significant']].copy()
         print(f"Found {len(sig_regions)} significant regions (|delta| >= {args.min_delta}, adj_pvalue <= {args.pvalue_cutoff})")
     else:
@@ -234,7 +241,7 @@ def main():
             tsv_df['ADJ_PVALUE'] = np.nan
         
         # Sort by significance and limit to top 100 for igv-reports
-        tsv_df = tsv_df.sort_values('ADJ_PVALUE', ascending=True).head(100)
+        tsv_df = tsv_df.sort_values('ADJ_PVALUE', ascending=True).head(args.igv_top_n)
         tsv_df.to_csv(args.output_igv_tsv, sep='\t', index=False, header=True)
         print(f"Saved top {len(tsv_df)} significant regions to TSV file: {args.output_igv_tsv}")
 
@@ -250,7 +257,7 @@ def main():
     significant_region_keys = set(sig_regions['region_key'].tolist())
     print(f"Significant region keys: {len(significant_region_keys)}")
 
-    # Load methylation profiles for each sample
+    # Load methylation profiles for each sample (filter to significant regions to save memory)
     meth_data = {}
     coord_to_label = {}  # Map coordinates to region labels
     
@@ -265,14 +272,19 @@ def main():
             # Create region key from chrom:start-end for matching
             if 'chrom' in df.columns and 'start' in df.columns and 'end' in df.columns:
                 df['region_key'] = df['chrom'] + ':' + df['start'].astype(str) + '-' + df['end'].astype(str)
-                # Build coordinate to label mapping (use cpg_label if available)
-                if 'cpg_label' in df.columns and not coord_to_label:
-                    for _, row in df.iterrows():
-                        coord_to_label[row['region_key']] = row['cpg_label']
             elif 'cpg_label' in df.columns:
                 df['region_key'] = df['cpg_label']
             else:
                 df['region_key'] = df.iloc[:, 0].astype(str)
+            
+            # Filter to significant regions only to save memory
+            if significant_region_keys:
+                df = df[df['region_key'].isin(significant_region_keys)]
+            
+            # Build coordinate to label mapping (use cpg_label if available)
+            if 'cpg_label' in df.columns and not coord_to_label:
+                for _, row in df.iterrows():
+                    coord_to_label[row['region_key']] = row['cpg_label']
             
             # Find the methylation value column
             meth_col = None
@@ -303,6 +315,19 @@ def main():
                 print(f"Filtered to {len(meth_matrix)} significant regions")
             else:
                 print("Warning: No matching regions found between profiles and cohort_comparison")
+                meth_matrix = meth_matrix.iloc[:0]
+        else:
+            print("Warning: No significant regions, skipping heatmap")
+            meth_matrix = meth_matrix.iloc[:0]
+        
+        # Sort by significance and limit to top_n for heatmap
+        if 'region_key' in sig_regions.columns and 'adj_pvalue' in sig_regions.columns:
+            sig_order = sig_regions.set_index('region_key')['adj_pvalue'].sort_values()
+            common_keys = [k for k in sig_order.index if k in meth_matrix.index]
+            if common_keys:
+                meth_matrix = meth_matrix.loc[common_keys]
+                meth_matrix = meth_matrix.iloc[:args.top_n]
+                print(f"Limited heatmap to top {len(meth_matrix)} regions by significance")
         
         # Convert coordinate-based index to region labels for y-axis display
         if coord_to_label:
@@ -322,6 +347,18 @@ def main():
         
         # Plot clustered heatmap
         n_regions = len(meth_matrix)
+        
+        if n_regions == 0:
+            print("No significant regions to plot, creating empty heatmap")
+            fig, ax = plt.subplots(figsize=(10, 8))
+            ax.text(0.5, 0.5, 'No significant regions found', ha='center', va='center', transform=ax.transAxes)
+            ax.set_title(f'Significant Regions (n=0, |delta|>={args.min_delta}, adj_pval<={args.pvalue_cutoff})')
+            plt.savefig(args.output_png, dpi=300, bbox_inches='tight')
+            plt.savefig(args.output_pdf, bbox_inches='tight')
+            plt.close()
+            print(f"Saved empty heatmap (0 significant regions)")
+            return
+        
         fig_height = max(8, min(50, n_regions * 0.3))
         
         # Drop rows/columns with all NaN values for clustering

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-DSS-based region methylation comparison using DSS results.
+DSS-based region methylation comparison using bedtools for speed.
 
 For each region BED file, computes:
   - Mean methylation difference (case - control) across CpGs in the region
@@ -8,64 +8,198 @@ For each region BED file, computes:
   - Number of DSS DMRs overlapping the region (total, hyper, hypo)
   - Number of DSS DMLs overlapping the region (total, hyper, hypo)
 
-Supports multiple case and control samples (CpGs pooled per group).
-Outputs a single TSV with one row per region.
+Uses bedtools map for per-sample per-region methylation aggregation
+and bedtools intersect for overlap counting.
 """
 
 import argparse
 import pandas as pd
 import numpy as np
-import pysam
+import subprocess
+import tempfile
 import os
 import sys
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 
-def load_cpg_methylation_multi(bed_gz_files):
-    """Load and pool CpG methylation from multiple combined.bed.gz files.
+def bedtools_map(bed_a, bed_b, columns=5, operations="mean,count"):
+    """Run bedtools map and return parsed DataFrame.
 
-    Returns DataFrame with columns: chrom, pos, meth (0-1 scale)
+    Returns DataFrame with columns: chrom, start, end, name, [op1, op2, ...]
     """
-    frames = []
-    for bed_gz_file in bed_gz_files:
-        records = []
-        try:
-            tbx = pysam.TabixFile(bed_gz_file)
-        except Exception as e:
-            print(f"Error opening {bed_gz_file}: {e}", file=sys.stderr)
-            continue
-        try:
-            for contig in tbx.contigs:
+    cmd = [
+        "bedtools", "map",
+        "-a", bed_a,
+        "-b", bed_b,
+        "-c", str(columns),
+        "-o", operations,
+        "-null", "NA",
+    ]
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    if result.returncode != 0:
+        print(f"bedtools map failed: {result.stderr}", file=sys.stderr)
+        return None
+
+    lines = [l for l in result.stdout.strip().split('\n') if l.strip()]
+    if not lines:
+        return None
+
+    op_names = operations.split(',')
+    col_names = ['chrom', 'start', 'end', 'name'] + op_names
+    rows = []
+    for line in lines:
+        fields = line.split('\t')
+        rows.append(fields[:len(col_names)])
+
+    df = pd.DataFrame(rows, columns=col_names)
+    for op in op_names:
+        df[op] = pd.to_numeric(df[op], errors='coerce')
+    df['start'] = df['start'].astype(int)
+    df['end'] = df['end'].astype(int)
+    return df
+
+
+def bedtools_intersect_count(bed_a, bed_b):
+    """Count overlaps of bed_b features in each region of bed_a.
+
+    Returns list of counts (same order as bed_a).
+    """
+    cmd = [
+        "bedtools", "intersect",
+        "-a", bed_a,
+        "-b", bed_b,
+        "-c",
+    ]
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    if result.returncode != 0:
+        print(f"bedtools intersect failed: {result.stderr}", file=sys.stderr)
+        return []
+
+    counts = []
+    for line in result.stdout.strip().split('\n'):
+        if line.strip():
+            fields = line.split('\t')
+            counts.append(int(fields[-1]) if fields[-1].isdigit() else 0)
+    return counts
+
+
+def compute_region_methylation_bedtools(regions_df, case_files, control_files, threads=1):
+    """Compute per-region methylation stats using bedtools map.
+
+    Runs bedtools map per sample in parallel, then aggregates across case/control groups.
+    Returns DataFrame with: n_cpgs, case_mean_meth, control_mean_meth, meth_diff
+    """
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.bed', delete=False) as f:
+        regions_df[['chrom', 'start', 'end', 'name']].to_csv(
+            f, sep='\t', index=False, header=False)
+        regions_tmp = f.name
+
+    try:
+        all_files = list(case_files) + list(control_files)
+        n_case = len(case_files)
+
+        # Run bedtools map in parallel for all samples
+        results_by_file = {}
+        with ThreadPoolExecutor(max_workers=threads) as executor:
+            futures = {executor.submit(bedtools_map, regions_tmp, f): f for f in all_files}
+            for future in as_completed(futures):
+                bed_file = futures[future]
                 try:
-                    for row in tbx.fetch(contig):
-                        if row.startswith('#'):
-                            continue
-                        fields = row.split('\t')
-                        if len(fields) >= 4:
-                            try:
-                                meth = float(fields[3]) / 100.0
-                                records.append({
-                                    'chrom': fields[0],
-                                    'pos': int(fields[1]) + 1,
-                                    'meth': meth
-                                })
-                            except (ValueError, IndexError):
-                                continue
-                except ValueError:
-                    continue
-        finally:
-            tbx.close()
-        if records:
-            frames.append(pd.DataFrame(records))
-    if not frames:
-        return pd.DataFrame(columns=['chrom', 'pos', 'meth'])
-    return pd.concat(frames, ignore_index=True)
+                    df = future.result()
+                    if df is not None:
+                        results_by_file[bed_file] = df
+                except Exception as e:
+                    print(f"bedtools map failed for {bed_file}: {e}", file=sys.stderr)
+
+        # Collect per-sample means
+        case_means = []
+        control_means = []
+        all_cpg_counts = []
+
+        for bed_file in case_files:
+            if bed_file in results_by_file:
+                df = results_by_file[bed_file]
+                case_means.append(df.set_index('name')['mean'])
+                all_cpg_counts.append(df.set_index('name')['count'])
+
+        for bed_file in control_files:
+            if bed_file in results_by_file:
+                df = results_by_file[bed_file]
+                control_means.append(df.set_index('name')['mean'])
+                all_cpg_counts.append(df.set_index('name')['count'])
+
+        # Aggregate
+        case_mean = pd.concat(case_means, axis=1).mean(axis=1) if case_means else pd.Series(dtype=float)
+        control_mean = pd.concat(control_means, axis=1).mean(axis=1) if control_means else pd.Series(dtype=float)
+        max_cpgs = pd.concat(all_cpg_counts, axis=1).max(axis=1) if all_cpg_counts else pd.Series(dtype=int)
+
+        # Align to regions
+        result = pd.DataFrame(index=regions_df['name'])
+        result['n_cpgs'] = max_cpgs.reindex(result.index).fillna(0).astype(int)
+        result['case_mean_meth'] = case_mean.reindex(result.index)
+        result['control_mean_meth'] = control_mean.reindex(result.index)
+        result['meth_diff'] = result['case_mean_meth'] - result['control_mean_meth']
+
+        return result
+    finally:
+        os.unlink(regions_tmp)
+
+
+def count_overlaps_bedtools(regions_df, features_df, feature_type='dmr'):
+    """Count overlapping features per region using bedtools intersect.
+
+    Returns DataFrame with overlap counts.
+    """
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.bed', delete=False) as f_reg:
+        regions_df[['chrom', 'start', 'end', 'name']].to_csv(
+            f_reg, sep='\t', index=False, header=False)
+        regions_tmp = f_reg.name
+
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.bed', delete=False) as f_feat:
+        features_df[['chrom', 'start', 'end']].to_csv(
+            f_feat, sep='\t', index=False, header=False)
+        features_tmp = f_feat.name
+
+    try:
+        total_counts = bedtools_intersect_count(regions_tmp, features_tmp)
+
+        # Hyper/hypo counts
+        hyper = features_df[features_df['delta'] > 0] if 'delta' in features_df.columns else features_df.iloc[:0]
+        hypo = features_df[features_df['delta'] < 0] if 'delta' in features_df.columns else features_df.iloc[:0]
+
+        if not hyper.empty:
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.bed', delete=False) as f_h:
+                hyper[['chrom', 'start', 'end']].to_csv(
+                    f_h, sep='\t', index=False, header=False)
+                hyper_tmp = f_h.name
+            hyper_counts = bedtools_intersect_count(regions_tmp, hyper_tmp)
+            os.unlink(hyper_tmp)
+        else:
+            hyper_counts = [0] * len(regions_df)
+
+        if not hypo.empty:
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.bed', delete=False) as f_h:
+                hypo[['chrom', 'start', 'end']].to_csv(
+                    f_h, sep='\t', index=False, header=False)
+                hypo_tmp = f_h.name
+            hypo_counts = bedtools_intersect_count(regions_tmp, hypo_tmp)
+            os.unlink(hypo_tmp)
+        else:
+            hypo_counts = [0] * len(regions_df)
+
+        result = pd.DataFrame({
+            f'n_{feature_type}s': total_counts,
+            f'n_hyper_{feature_type}s': hyper_counts,
+            f'n_hypo_{feature_type}s': hypo_counts,
+        })
+        return result
+    finally:
+        os.unlink(regions_tmp)
+        os.unlink(features_tmp)
 
 
 def load_bed_regions(bed_file):
-    """Load regions from a BED file.
-
-    Returns DataFrame with columns: chrom, start, end, name
-    """
+    """Load regions from a BED file."""
     if not os.path.exists(bed_file) or os.path.getsize(bed_file) == 0:
         return pd.DataFrame(columns=['chrom', 'start', 'end', 'name'])
 
@@ -82,16 +216,12 @@ def load_bed_regions(bed_file):
 
 
 def load_dmr_bed(bed_file, tsv_file):
-    """Load DSS DMRs with delta values.
-
-    Returns DataFrame with: chrom, start, end, delta
-    """
+    """Load DSS DMRs with delta values."""
     bed = load_bed_regions(bed_file)
     if bed.empty:
         return pd.DataFrame(columns=['chrom', 'start', 'end', 'delta'])
 
     tsv = pd.read_csv(tsv_file, sep='\t')
-
     diff_col = None
     for col in ['diff.Methy', 'diff_Methy', 'diff', 'DELTA']:
         if col in tsv.columns:
@@ -116,16 +246,12 @@ def load_dmr_bed(bed_file, tsv_file):
 
 
 def load_dml_bed(bed_file, tsv_file):
-    """Load DSS DMLs with delta values.
-
-    Returns DataFrame with: chrom, pos, delta
-    """
+    """Load DSS DMLs with delta values."""
     bed = load_bed_regions(bed_file)
     if bed.empty:
         return pd.DataFrame(columns=['chrom', 'pos', 'delta'])
 
     tsv = pd.read_csv(tsv_file, sep='\t')
-
     diff_col = None
     for col in ['diff', 'diff.Methy', 'diff_Methy', 'DELTA']:
         if col in tsv.columns:
@@ -148,77 +274,9 @@ def load_dml_bed(bed_file, tsv_file):
     return bed[['chrom', 'start', 'delta']].rename(columns={'start': 'pos'})
 
 
-def count_overlaps(regions_df, features_df, feature_type='dmr'):
-    """Count overlapping features per region.
-
-    features_df must have chrom, start, end, delta columns.
-    Returns DataFrame with overlap counts.
-    """
-    results = []
-    for _, region in regions_df.iterrows():
-        r_chrom = region['chrom']
-        r_start = region['start']
-        r_end = region['end']
-
-        overlaps = features_df[
-            (features_df['chrom'] == r_chrom) &
-            (features_df['start'] < r_end) &
-            (features_df['end'] > r_start)
-        ]
-
-        total = len(overlaps)
-        hyper = int((overlaps['delta'] > 0).sum()) if 'delta' in overlaps.columns else 0
-        hypo = int((overlaps['delta'] < 0).sum()) if 'delta' in overlaps.columns else 0
-
-        results.append({
-            f'n_{feature_type}s': total,
-            f'n_hyper_{feature_type}s': hyper,
-            f'n_hypo_{feature_type}s': hypo,
-        })
-
-    return pd.DataFrame(results)
-
-
-def compute_region_methylation(regions_df, case_cpg, control_cpg):
-    """Compute mean methylation difference per region.
-
-    Returns DataFrame with: n_cpgs, case_mean_meth, control_mean_meth, meth_diff
-    """
-    results = []
-    for _, region in regions_df.iterrows():
-        r_chrom = region['chrom']
-        r_start = region['start']
-        r_end = region['end']
-
-        case_in = case_cpg[
-            (case_cpg['chrom'] == r_chrom) &
-            (case_cpg['pos'] > r_start) &
-            (case_cpg['pos'] <= r_end)
-        ]
-        ctrl_in = control_cpg[
-            (control_cpg['chrom'] == r_chrom) &
-            (control_cpg['pos'] > r_start) &
-            (control_cpg['pos'] <= r_end)
-        ]
-
-        n_cpgs = max(len(case_in), len(ctrl_in))
-        case_mean = case_in['meth'].mean() if not case_in.empty else np.nan
-        ctrl_mean = ctrl_in['meth'].mean() if not ctrl_in.empty else np.nan
-        meth_diff = case_mean - ctrl_mean if not (np.isnan(case_mean) or np.isnan(ctrl_mean)) else np.nan
-
-        results.append({
-            'n_cpgs': n_cpgs,
-            'case_mean_meth': case_mean,
-            'control_mean_meth': ctrl_mean,
-            'meth_diff': meth_diff,
-        })
-
-    return pd.DataFrame(results)
-
-
 def main():
     parser = argparse.ArgumentParser(
-        description="DSS-based region methylation comparison (1 case vs 1 control)"
+        description="DSS-based region methylation comparison using bedtools"
     )
     parser.add_argument('--case-beds', required=True,
                         help='Comma-separated case combined.bed.gz files')
@@ -233,6 +291,7 @@ def main():
     parser.add_argument('--region-name', required=True, action='append', default=[],
                         help='Region name for each --region-bed')
     parser.add_argument('--output-tsv', required=True, help='Output TSV file')
+    parser.add_argument('--threads', type=int, default=1, help='Number of threads for parallel bedtools calls')
     args = parser.parse_args()
 
     if len(args.region_bed) != len(args.region_name):
@@ -244,12 +303,7 @@ def main():
     case_files = args.case_beds.split(',')
     control_files = args.control_beds.split(',')
 
-    print(f"Loading CpG methylation data ({len(case_files)} case, {len(control_files)} control samples)...")
-    case_cpg = load_cpg_methylation_multi(case_files)
-    control_cpg = load_cpg_methylation_multi(control_files)
-    print(f"  Case: {len(case_cpg)} CpGs, Control: {len(control_cpg)} CpGs")
-
-    print("Loading DSS DMRs and DMLs...")
+    print(f"Loading DSS DMRs and DMLs...")
     dmrs = load_dmr_bed(args.dmr_bed, args.dmr_tsv)
     dmls = load_dml_bed(args.dml_bed, args.dml_tsv)
     print(f"  DMRs: {len(dmrs)}, DMLs: {len(dmls)}")
@@ -265,12 +319,15 @@ def main():
 
         print(f"  Loaded {len(regions)} regions")
 
-        meth_stats = compute_region_methylation(regions, case_cpg, control_cpg)
+        print(f"  Computing methylation stats via bedtools map ({len(case_files)} case, {len(control_files)} control samples, {args.threads} threads)...")
+        meth_stats = compute_region_methylation_bedtools(regions, case_files, control_files, args.threads)
 
-        dmr_counts = count_overlaps(regions, dmrs, 'dmr') if not dmrs.empty else pd.DataFrame(
+        print(f"  Counting DMR overlaps via bedtools intersect...")
+        dmr_counts = count_overlaps_bedtools(regions, dmrs, 'dmr') if not dmrs.empty else pd.DataFrame(
             {'n_dmrs': 0, 'n_hyper_dmrs': 0, 'n_hypo_dmrs': 0}, index=regions.index)
 
-        dml_counts = count_overlaps(regions, dmls, 'dml') if not dmls.empty else pd.DataFrame(
+        print(f"  Counting DML overlaps via bedtools intersect...")
+        dml_counts = count_overlaps_bedtools(regions, dmls, 'dml') if not dmls.empty else pd.DataFrame(
             {'n_dmls': 0, 'n_hyper_dmls': 0, 'n_hypo_dmls': 0}, index=regions.index)
 
         combined = pd.concat([
@@ -298,5 +355,5 @@ def main():
     print(f"Wrote {len(final)} region comparisons to {args.output_tsv}")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

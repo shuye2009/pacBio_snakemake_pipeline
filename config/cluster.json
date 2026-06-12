@@ -96,6 +96,14 @@
         "ntasks-per-node" : 1
     },
 
+    "Plot_methylation_heatmap_region" :
+    {
+        "partition" : "himem",
+        "time" : "4:00:00",
+        "memory" : "64G",
+        "ntasks-per-node" : 1
+    },
+
     "Plot_dmr_volcano" :
     {
         "partition" : "all",
@@ -387,9 +395,9 @@
     "DSS_region_comparison" :
     {
         "partition" : "himem",
-        "time" : "8:00:00",
+        "time" : "24:00:00",
         "memory" : "64G",
-        "ntasks-per-node" : 1
+        "ntasks-per-node" : 16
     },
 
     "Convert_dss_dmr_tsv" :

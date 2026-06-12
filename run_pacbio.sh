@@ -45,6 +45,7 @@ snakemake \
     --config target="$TARGET" \
     --cluster-config "$PIPELINE_DIR/config/cluster.json" \
     --snakefile "$PIPELINE_DIR/Snakefile" \
+    --default-resources "tmpdir='/cluster/projects/hardinggroup/Shuye/tmp'" \
     --cluster "sbatch \
         --account={cluster.account} \
         --partition={cluster.partition} \

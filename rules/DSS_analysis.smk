@@ -112,6 +112,7 @@ rule DSS_region_comparison:
         script=os.path.join(SCRIPTS_DIR, "dss_region_comparison.py"),
         case_beds=lambda wildcards, input: ",".join(input.case_beds),
         control_beds=lambda wildcards, input: ",".join(input.control_beds),
+    threads: config["dss"]["threads"]
     log:
         config["directory"]["output"] + "/logs/dss/{region}_comparison.log",
     shell:
@@ -128,5 +129,6 @@ rule DSS_region_comparison:
             --dml-tsv {input.dml_tsv} \
             --region-bed {input.region_bed} --region-name {wildcards.region} \
             --output-tsv {output.tsv} \
+            --threads {threads} \
             2>&1 | tee {log}
         """

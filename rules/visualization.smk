@@ -62,7 +62,11 @@ rule Plot_methylation_heatmap_region:
         profile_dir=METHBAT_DIR + "/profiles_region",
         min_delta=config["methbat"]["min_delta"],
         pvalue_cutoff=config["methbat"]["pvalue_cutoff"],
+        top_n=TOP_N,
+        igv_top_n=IGV_TOP_N,
         script=os.path.join(SCRIPTS_DIR, "plot_methylation_heatmap.py"),
+    resources:
+        mem_mb=64000,
     log:
         config["directory"]["output"] + "/logs/visualization/heatmap.log",
     shell:
@@ -77,6 +81,8 @@ rule Plot_methylation_heatmap_region:
             --control-samples {params.control_samples} \
             --min-delta {params.min_delta} \
             --pvalue-cutoff {params.pvalue_cutoff} \
+            --top-n {params.top_n} \
+            --igv-top-n {params.igv_top_n} \
             --output-png {output.heatmap} \
             --output-pdf {output.heatmap_pdf} \
             --output-tsv {output.stats_tsv} \
